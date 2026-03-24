@@ -63,7 +63,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Baslangic profili kaydedildi.')), 
+          const SnackBar(content: Text('Baslangic profili kaydedildi.')),
         );
       }
     } catch (_) {

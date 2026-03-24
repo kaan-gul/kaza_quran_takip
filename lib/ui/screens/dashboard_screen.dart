@@ -75,97 +75,91 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(userProfileProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kaza ve Kuran Takip'),
-        centerTitle: false,
-      ),
-      body: profileAsync.when(
-        data: (data) {
-          if (data == null) {
-            return const Center(
-              child: Text('Profil bulunamadi. Onboarding adimini tamamlayin.'),
-            );
-          }
-
-          final profile = data.profile;
-
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            children: [
-              _LevelCard(
-                level: profile.level,
-                points: profile.motivationPoints,
-                progress: data.levelProgress,
-                pointsToNextLevel: data.pointsToNextLevel,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Bugune Kadar Kilinan Toplam Kaza Sayilari',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              ...PrayerTime.values.map((time) {
-                final total = data.completedByPrayer[time] ?? 0;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _PrayerCard(
-                    title: _prayerLabel(time),
-                    total: total,
-                    color: AppColors.prayerColor(time),
-                    onTap: () => _onAddKaza(time),
-                  ),
-                );
-              }),
-              const SizedBox(height: 10),
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Bugun kac sayfa Kuran okudun?',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _quranPagesController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                hintText: 'Orn: 5',
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          FilledButton(
-                            onPressed: _onAddQuranPages,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.quranEmerald,
-                            ),
-                            child: const Text('Ekle'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+    return profileAsync.when(
+      data: (data) {
+        if (data == null) {
+          return const Center(
+            child: Text('Profil bulunamadi. Onboarding adimini tamamlayin.'),
           );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('Hata: $error')),
-      ),
+        }
+
+        final profile = data.profile;
+
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            _LevelCard(
+              level: profile.level,
+              points: profile.motivationPoints,
+              progress: data.levelProgress,
+              pointsToNextLevel: data.pointsToNextLevel,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Bugune Kadar Kilinan Toplam Kaza Sayilari',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            ...PrayerTime.values.map((time) {
+              final total = data.completedByPrayer[time] ?? 0;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _PrayerCard(
+                  title: _prayerLabel(time),
+                  total: total,
+                  color: AppColors.prayerColor(time),
+                  onTap: () => _onAddKaza(time),
+                ),
+              );
+            }),
+            const SizedBox(height: 10),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Bugun kac sayfa Kuran okudun?',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _quranPagesController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              hintText: 'Orn: 5',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        FilledButton(
+                          onPressed: _onAddQuranPages,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.quranEmerald,
+                          ),
+                          child: const Text('Ekle'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text('Hata: $error')),
     );
   }
 }

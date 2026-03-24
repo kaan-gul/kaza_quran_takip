@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../src/features/kaza/domain/entities/prayer_time.dart';
 import '../src/features/profile/data/models/user_profile_model.dart';
 import 'database_provider.dart';
+import 'statistics_provider.dart';
+import 'streak_provider.dart';
 
 class UserProfileViewData {
   const UserProfileViewData({required this.profile});
@@ -66,6 +68,9 @@ class UserProfileNotifier extends AsyncNotifier<UserProfileViewData?> {
 
     await db.upsertUserProfile(model);
     ref.invalidate(isOnboardingRequiredProvider);
+    ref.invalidate(statisticsProvider(StatisticsPeriod.weekly));
+    ref.invalidate(statisticsProvider(StatisticsPeriod.monthly));
+    ref.invalidate(streakProvider);
     ref.invalidateSelf();
     await future;
   }

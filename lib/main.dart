@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/database_provider.dart';
-import 'ui/screens/dashboard_screen.dart';
+import 'ui/screens/main_layout.dart';
 import 'ui/screens/onboarding_screen.dart';
 import 'ui/theme/app_theme.dart';
 
@@ -37,7 +37,7 @@ class _AppGate extends ConsumerWidget {
         if (needsOnboarding) {
           return const OnboardingScreen();
         }
-        return const DashboardScreen();
+        return const MainLayout();
       },
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),

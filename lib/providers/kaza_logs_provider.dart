@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../src/features/kaza/data/models/kaza_log_model.dart';
 import '../src/features/kaza/domain/entities/prayer_time.dart';
 import 'database_provider.dart';
+import 'statistics_provider.dart';
+import 'streak_provider.dart';
 import 'user_profile_provider.dart';
 
 class KazaActionResult {
@@ -40,6 +42,9 @@ class KazaLogsNotifier extends AsyncNotifier<List<KazaLogModel>> {
     final profileAfter = await db.getUserProfile();
 
     ref.invalidate(userProfileProvider);
+    ref.invalidate(statisticsProvider(StatisticsPeriod.weekly));
+    ref.invalidate(statisticsProvider(StatisticsPeriod.monthly));
+    ref.invalidate(streakProvider);
     ref.invalidateSelf();
 
     final oldLevel = profileBefore?.level ?? 1;

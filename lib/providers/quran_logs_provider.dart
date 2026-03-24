@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../src/features/quran/data/models/quran_log_model.dart';
 import 'database_provider.dart';
+import 'streak_provider.dart';
 import 'user_profile_provider.dart';
 
 class QuranLogsNotifier extends AsyncNotifier<List<QuranLogModel>> {
@@ -24,6 +25,7 @@ class QuranLogsNotifier extends AsyncNotifier<List<QuranLogModel>> {
     );
 
     ref.invalidate(userProfileProvider);
+    ref.invalidate(streakProvider);
     ref.invalidateSelf();
   }
 
