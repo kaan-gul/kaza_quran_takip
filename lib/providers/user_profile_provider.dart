@@ -23,12 +23,30 @@ class UserProfileViewData {
   }
 
   int get pointsToNextLevel {
-    final remainder = profile.motivationPoints % 10;
-    return 10 - remainder;
+    final currentThreshold = _getLevelThreshold(profile.level);
+    final nextThreshold = _getLevelThreshold(profile.level + 1);
+    final pointsInLevel = profile.motivationPoints - currentThreshold;
+    final pointsNeeded = nextThreshold - currentThreshold;
+    return (pointsNeeded - pointsInLevel).clamp(0, pointsNeeded);
   }
 
   double get levelProgress {
-    return (profile.motivationPoints % 10) / 10;
+    final currentThreshold = _getLevelThreshold(profile.level);
+    final nextThreshold = _getLevelThreshold(profile.level + 1);
+    final pointsInLevel = profile.motivationPoints - currentThreshold;
+    final pointsNeeded = nextThreshold - currentThreshold;
+    if (pointsNeeded <= 0) return 0;
+    return (pointsInLevel / pointsNeeded).clamp(0, 1);
+  }
+
+  static int _getLevelThreshold(int level) {
+    if (level <= 1) {
+      return 0;
+    } else if (level == 2) {
+      return 700;
+    } else {
+      return 700 + (level - 2) * 140;
+    }
   }
 }
 

@@ -229,8 +229,8 @@ class AppDatabaseHelper {
     final currentCompleted = (profileRows.first[column] as num?)?.toInt() ?? 0;
     final newCompleted = currentCompleted + incrementBy;
 
-    final pointsAfter = profile.motivationPoints + incrementBy;
-    final levelAfter = (pointsAfter ~/ 10) + 1;
+    final pointsAfter = profile.motivationPoints + (incrementBy * 70);
+    final levelAfter = _calculateLevelFromPoints(pointsAfter);
 
     await txn.update(
       userProfileTable,
@@ -273,9 +273,9 @@ class AppDatabaseHelper {
     final newCompleted =
         (currentCompleted - decrementBy).clamp(0, currentCompleted);
 
-    final pointsAfter = (profile.motivationPoints - decrementBy)
+    final pointsAfter = (profile.motivationPoints - (decrementBy * 70))
         .clamp(0, profile.motivationPoints);
-    final levelAfter = (pointsAfter ~/ 10) + 1;
+    final levelAfter = _calculateLevelFromPoints(pointsAfter);
 
     await txn.update(
       userProfileTable,
@@ -393,9 +393,9 @@ class AppDatabaseHelper {
     }
 
     final profile = UserProfileModel.fromMap(profileRows.first);
-    final gainedPoints = pages;
+    final gainedPoints = pages * 70;
     final pointsAfter = profile.motivationPoints + gainedPoints;
-    final levelAfter = (pointsAfter ~/ 10) + 1;
+    final levelAfter = _calculateLevelFromPoints(pointsAfter);
 
     await txn.update(
       userProfileTable,
@@ -423,9 +423,9 @@ class AppDatabaseHelper {
     }
 
     final profile = UserProfileModel.fromMap(profileRows.first);
-    final pointsAfter =
-        (profile.motivationPoints - pages).clamp(0, profile.motivationPoints);
-    final levelAfter = (pointsAfter ~/ 10) + 1;
+    final pointsAfter = (profile.motivationPoints - (pages * 70))
+        .clamp(0, profile.motivationPoints);
+    final levelAfter = _calculateLevelFromPoints(pointsAfter);
 
     await txn.update(
       userProfileTable,
@@ -666,6 +666,28 @@ class AppDatabaseHelper {
         return PrayerTime.vitir.name;
       default:
         return null;
+    }
+  }
+
+  int _calculateLevelFromPoints(int totalPoints) {
+    int level = 1;
+    while (true) {
+      final nextThreshold = _getLevelThreshold(level + 1);
+      if (totalPoints < nextThreshold) {
+        break;
+      }
+      level++;
+    }
+    return level;
+  }
+
+  int _getLevelThreshold(int level) {
+    if (level <= 1) {
+      return 0;
+    } else if (level == 2) {
+      return 700;
+    } else {
+      return 700 + (level - 2) * 140;
     }
   }
 }
