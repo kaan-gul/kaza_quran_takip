@@ -183,9 +183,10 @@ class _MetricsWrap extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         item.value,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                       ),
                       const SizedBox(height: 4),
                       Text(
