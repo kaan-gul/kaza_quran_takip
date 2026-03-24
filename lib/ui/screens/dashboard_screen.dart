@@ -48,13 +48,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         : 'Harika, 1 adım daha yaklaştın!';
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(milliseconds: 1000),
+      ),
     );
   }
 
   Future<void> _onAddQuranPages() async {
-    final pages = int.tryParse(_quranPagesController.text.trim()) ?? 0;
-    if (pages <= 0) {
+    final rawInput = _quranPagesController.text.trim();
+    final pages = rawInput.isEmpty ? 1 : int.tryParse(rawInput);
+
+    if (pages == null || pages <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lütfen geçerli bir sayfa sayısı gir.')),
       );
@@ -66,7 +71,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$pages sayfa eklendi. Devam!')),
+        SnackBar(
+          content: Text('$pages sayfa eklendi 📖'),
+          duration: const Duration(milliseconds: 1000),
+        ),
       );
     }
   }
@@ -144,13 +152,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        FilledButton.icon(
-                          onPressed: _onAddQuranPages,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.quranEmerald,
-                          ),
-                          icon: const Icon(Icons.add_rounded),
-                          label: const Text('Ekle'),
+                        _PressAnimatedQuranAddButton(
+                          onPressed: () {
+                            _onAddQuranPages();
+                          },
                         ),
                       ],
                     ),
@@ -196,7 +201,7 @@ class _LevelCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Level $level',
+            'Seviye $level',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -220,7 +225,7 @@ class _LevelCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Sonraki level için $pointsToNextLevel puan kaldı',
+            'Sonraki seviye için $pointsToNextLevel puan kaldı',
             style: const TextStyle(color: Colors.white70),
           ),
         ],
@@ -244,6 +249,11 @@ class _PrayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final badgeTextColor =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.light
+            ? const Color(0xFF111827)
+            : Colors.white;
+
     return Card.filled(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -251,11 +261,34 @@ class _PrayerCard extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 12,
-              height: 48,
+              width: 54,
+              height: 54,
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.5),
+                    blurRadius: 9,
+                    spreadRadius: 1.5,
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$total',
+                      style: TextStyle(
+                        color: badgeTextColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -271,23 +304,114 @@ class _PrayerCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text('Bugüne kadar kılınan toplam: $total'),
+                  const Text(
+                    'Kılınan Toplam Kaza:',
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
-            FilledButton.tonalIcon(
+            _PressAnimatedPrayerButton(
+              color: color,
               onPressed: onTap,
-              icon: const Icon(Icons.check_circle_outline_rounded),
-              label: const Text('Kıldım'),
-              style: FilledButton.styleFrom(
-                foregroundColor: color.withValues(alpha: 0.95),
-                backgroundColor: color.withValues(alpha: 0.16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PressAnimatedPrayerButton extends StatefulWidget {
+  const _PressAnimatedPrayerButton(
+      {required this.color, required this.onPressed});
+
+  final Color color;
+  final VoidCallback onPressed;
+
+  @override
+  State<_PressAnimatedPrayerButton> createState() =>
+      _PressAnimatedPrayerButtonState();
+}
+
+class _PressAnimatedPrayerButtonState
+    extends State<_PressAnimatedPrayerButton> {
+  bool _isPressed = false;
+
+  void _setPressed(bool value) {
+    if (_isPressed == value) {
+      return;
+    }
+    setState(() => _isPressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (_) => _setPressed(true),
+      onPointerUp: (_) => _setPressed(false),
+      onPointerCancel: (_) => _setPressed(false),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.95 : 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: FilledButton.tonalIcon(
+          onPressed: widget.onPressed,
+          icon: const Icon(Icons.check_circle_outline_rounded),
+          label: const Text('Kıldım'),
+          style: FilledButton.styleFrom(
+            foregroundColor: widget.color.withValues(alpha: 0.96),
+            backgroundColor: widget.color.withValues(alpha: 0.16),
+            overlayColor: widget.color.withValues(alpha: 0.32),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PressAnimatedQuranAddButton extends StatefulWidget {
+  const _PressAnimatedQuranAddButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  State<_PressAnimatedQuranAddButton> createState() =>
+      _PressAnimatedQuranAddButtonState();
+}
+
+class _PressAnimatedQuranAddButtonState
+    extends State<_PressAnimatedQuranAddButton> {
+  bool _isPressed = false;
+
+  void _setPressed(bool value) {
+    if (_isPressed == value) {
+      return;
+    }
+    setState(() => _isPressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (_) => _setPressed(true),
+      onPointerUp: (_) => _setPressed(false),
+      onPointerCancel: (_) => _setPressed(false),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.95 : 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: FilledButton.icon(
+          onPressed: widget.onPressed,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.quranEmerald,
+            overlayColor: AppColors.quranEmerald.withValues(alpha: 0.32),
+          ),
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Ekle'),
         ),
       ),
     );
