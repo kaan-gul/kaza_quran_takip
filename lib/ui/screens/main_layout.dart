@@ -75,24 +75,28 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   @override
   Widget build(BuildContext context) {
+    final showTopBar = _currentIndex != 2;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_currentIndex]),
-        actions: [
-          if (kDebugMode && (_currentIndex == 1 || _currentIndex == 2))
-            IconButton(
-              onPressed: _isGenerating ? null : _generateMockData,
-              tooltip: 'Test Verisi Üret',
-              icon: _isGenerating
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.auto_fix_high_rounded),
-            ),
-        ],
-      ),
+      appBar: showTopBar
+          ? AppBar(
+              title: Text(_titles[_currentIndex]),
+              actions: [
+                if (kDebugMode && _currentIndex == 1)
+                  IconButton(
+                    onPressed: _isGenerating ? null : _generateMockData,
+                    tooltip: 'Test Verisi Üret',
+                    icon: _isGenerating
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_fix_high_rounded),
+                  ),
+              ],
+            )
+          : null,
       body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,

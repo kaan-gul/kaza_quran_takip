@@ -23,23 +23,74 @@ class StreakData {
 
   final List<StreakDayData> days;
 
-  int get kazaCurrentStreak => _computeCurrentStreak(
+  int get kazaCurrentStreak => _computeCurrentStreakAllowTodayGap(
         days.map((item) => item.hasKaza).toList(growable: false),
       );
 
-  int get quranCurrentStreak => _computeCurrentStreak(
+  int get quranCurrentStreak => _computeCurrentStreakAllowTodayGap(
         days.map((item) => item.hasQuran).toList(growable: false),
       );
 
-  static int _computeCurrentStreak(List<bool> values) {
+  int get kazaLongestStreak => _computeLongestStreak(
+        days.map((item) => item.hasKaza).toList(growable: false),
+      );
+
+  int get quranLongestStreak => _computeLongestStreak(
+        days.map((item) => item.hasQuran).toList(growable: false),
+      );
+
+  int get totalKazaInRange {
+    var sum = 0;
+    for (final day in days) {
+      for (final value in day.kazaCounts.values) {
+        sum += value;
+      }
+    }
+    return sum;
+  }
+
+  int get totalQuranPagesInRange {
+    return days.fold<int>(0, (sum, day) => sum + day.quranPages);
+  }
+
+  static int _computeCurrentStreakAllowTodayGap(List<bool> values) {
+    if (values.isEmpty) {
+      return 0;
+    }
+
+    var index = values.length - 1;
+
+    // If today has no record but yesterday has one, keep streak alive.
+    if (!values[index] && index > 0 && values[index - 1]) {
+      index -= 1;
+    }
+
     var streak = 0;
-    for (var i = values.length - 1; i >= 0; i--) {
+    for (var i = index; i >= 0; i--) {
       if (!values[i]) {
         break;
       }
       streak++;
     }
     return streak;
+  }
+
+  static int _computeLongestStreak(List<bool> values) {
+    var longest = 0;
+    var current = 0;
+
+    for (final value in values) {
+      if (value) {
+        current += 1;
+        if (current > longest) {
+          longest = current;
+        }
+      } else {
+        current = 0;
+      }
+    }
+
+    return longest;
   }
 }
 

@@ -12,112 +12,282 @@ class StreakScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final streakAsync = ref.watch(streakProvider);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      child: streakAsync.when(
-        data: (data) {
-          return ListView(
-            children: [
-              _StreakHeader(
-                title: 'Kaza Namazı Serisi',
-                subtitle:
-                    'Kutular o gün kılınan vakit sayısına göre dikey şeritlere ayrılır.',
-                streak: data.kazaCurrentStreak,
-                icon: Icons.local_fire_department_rounded,
-                badgeColor: const Color(0xFFFEF3C7),
-                textColor: const Color(0xFF92400E),
-              ),
-              const SizedBox(height: 10),
-              _KazaHeatGrid(days: data.days),
-              const SizedBox(height: 22),
-              _StreakHeader(
-                title: 'Kuran Okuma Serisi',
-                subtitle:
-                    'Yeşil ton koyulaştıkça o gün daha fazla sayfa okunmuş demektir.',
-                streak: data.quranCurrentStreak,
-                icon: Icons.menu_book_rounded,
-                badgeColor: const Color(0xFFD1FAE5),
-                textColor: const Color(0xFF065F46),
-              ),
-              const SizedBox(height: 10),
-              _QuranHeatGrid(days: data.days),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Seriler'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.mosque_rounded), text: 'Namaz Serisi'),
+              Tab(icon: Icon(Icons.menu_book_rounded), text: 'Kuran Serisi'),
             ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('Hata: $error')),
+          ),
+        ),
+        body: streakAsync.when(
+          data: (data) {
+            return TabBarView(
+              children: [
+                _NamazSeriesTab(data: data),
+                _QuranSeriesTab(data: data),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(child: Text('Hata: $error')),
+        ),
       ),
     );
   }
 }
 
-class _StreakHeader extends StatelessWidget {
-  const _StreakHeader({
-    required this.title,
-    required this.subtitle,
-    required this.streak,
-    required this.icon,
-    required this.badgeColor,
-    required this.textColor,
-  });
+class _NamazSeriesTab extends StatelessWidget {
+  const _NamazSeriesTab({required this.data});
 
-  final String title;
-  final String subtitle;
-  final int streak;
-  final IconData icon;
-  final Color badgeColor;
-  final Color textColor;
+  final StreakData data;
 
   @override
   Widget build(BuildContext context) {
-    return Card.filled(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _MetricsWrap(
+            items: [
+              _MetricItem(
+                label: 'Mevcut Seri',
+                value: '${data.kazaCurrentStreak} Gün',
+                icon: Icons.local_fire_department_rounded,
+              ),
+              _MetricItem(
+                label: 'En Uzun Seri',
+                value: '${data.kazaLongestStreak} Gün',
+                icon: Icons.emoji_events_rounded,
+              ),
+              _MetricItem(
+                label: 'Toplam Kaza (60 Gün)',
+                value: '${data.totalKazaInRange}',
+                icon: Icons.check_circle_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const _SectionCardTitle(title: 'Son 60 Günlük Kaza Haritası'),
+          const SizedBox(height: 8),
+          _KazaHeatGrid(days: data.days),
+          const SizedBox(height: 12),
+          const _KazaLegend(),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuranSeriesTab extends StatelessWidget {
+  const _QuranSeriesTab({required this.data});
+
+  final StreakData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _MetricsWrap(
+            items: [
+              _MetricItem(
+                label: 'Mevcut Seri',
+                value: '${data.quranCurrentStreak} Gün',
+                icon: Icons.local_fire_department_rounded,
+              ),
+              _MetricItem(
+                label: 'En Uzun Seri',
+                value: '${data.quranLongestStreak} Gün',
+                icon: Icons.emoji_events_rounded,
+              ),
+              _MetricItem(
+                label: 'Toplam Sayfa (60 Gün)',
+                value: '${data.totalQuranPagesInRange}',
+                icon: Icons.auto_stories_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const _SectionCardTitle(title: 'Son 60 Günlük Kuran Haritası'),
+          const SizedBox(height: 8),
+          _QuranHeatGrid(days: data.days),
+          const SizedBox(height: 12),
+          const _QuranLegend(),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionCardTitle extends StatelessWidget {
+  const _SectionCardTitle({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+    );
+  }
+}
+
+class _MetricItem {
+  const _MetricItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+}
+
+class _MetricsWrap extends StatelessWidget {
+  const _MetricsWrap({required this.items});
+
+  final List<_MetricItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: items
+          .map(
+            (item) => SizedBox(
+              width: 180,
+              child: Card.filled(
+                color: Theme.of(context).colorScheme.surfaceContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(item.icon, size: 22),
+                      const SizedBox(height: 8),
+                      Text(
+                        item.value,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.label,
+                        style: const TextStyle(color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _KazaLegend extends StatelessWidget {
+  const _KazaLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card.outlined(
       color: Theme.of(context).colorScheme.surfaceContainer,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
               children: [
-                Icon(icon),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: badgeColor,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '$streak gün',
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+                _LegendChip(color: AppColors.sabah, label: 'Sabah'),
+                _LegendChip(color: AppColors.ogle, label: 'Öğle'),
+                _LegendChip(color: AppColors.ikindi, label: 'İkindi'),
+                _LegendChip(color: AppColors.aksam, label: 'Akşam'),
+                _LegendChip(color: AppColors.yatsi, label: 'Yatsı'),
+                _LegendChip(color: AppColors.vitir, label: 'Vitir'),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 10),
             Text(
-              subtitle,
-              style: const TextStyle(color: AppColors.textMuted),
+              'Renkler o gün o vakitten kılınan kaza sayısına göre koyulaşır.',
+              style: TextStyle(color: AppColors.textMuted),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _QuranLegend extends StatelessWidget {
+  const _QuranLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card.outlined(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _LegendChip(color: Color(0x664BAF8A), label: '1-5 Sf'),
+            _LegendChip(color: Color(0xB34BAF8A), label: '6-10 Sf'),
+            _LegendChip(color: Color(0xFF4BAF8A), label: '20+ Sf'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LegendChip extends StatelessWidget {
+  const _LegendChip({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(label),
+      ],
     );
   }
 }
@@ -141,14 +311,14 @@ class _KazaHeatGrid extends StatelessWidget {
 
     return _GridCard(
       child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
+        spacing: 7,
+        runSpacing: 7,
         children: days.map((day) {
           return Tooltip(
             message: _tooltip(day),
             child: SizedBox(
-              width: 16,
-              height: 16,
+              width: 17,
+              height: 17,
               child: CustomPaint(
                 painter: KazaStreakCellPainter(kazaCounts: day.kazaCounts),
               ),
@@ -208,15 +378,15 @@ class _QuranHeatGrid extends StatelessWidget {
 
     return _GridCard(
       child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
+        spacing: 7,
+        runSpacing: 7,
         children: days.map((day) {
           final color = _quranColor(day.quranPages);
           return Tooltip(
             message: _tooltip(day),
             child: Container(
-              width: 16,
-              height: 16,
+              width: 17,
+              height: 17,
               decoration: BoxDecoration(
                 color: color,
                 borderRadius: BorderRadius.circular(4),
@@ -258,7 +428,7 @@ class _GridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card.filled(
+    return Card.outlined(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
