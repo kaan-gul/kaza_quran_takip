@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/statistics_provider.dart';
+import '../../providers/user_profile_provider.dart';
 import '../../src/features/kaza/domain/entities/prayer_time.dart';
 import '../theme/app_colors.dart';
 
@@ -17,6 +18,108 @@ class StatisticsScreen extends ConsumerStatefulWidget {
 
 class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
   StatisticsPeriod _period = StatisticsPeriod.weekly;
+
+  Future<void> _showEditDebtsSheet(StatisticsData stats) async {
+    if (stats.debts.isEmpty) {
+      return;
+    }
+
+    final sabah = TextEditingController(
+      text: _initialFor(stats, PrayerTime.sabah).toString(),
+    );
+    final ogle = TextEditingController(
+      text: _initialFor(stats, PrayerTime.ogle).toString(),
+    );
+    final ikindi = TextEditingController(
+      text: _initialFor(stats, PrayerTime.ikindi).toString(),
+    );
+    final aksam = TextEditingController(
+      text: _initialFor(stats, PrayerTime.aksam).toString(),
+    );
+    final yatsi = TextEditingController(
+      text: _initialFor(stats, PrayerTime.yatsi).toString(),
+    );
+    final vitir = TextEditingController(
+      text: _initialFor(stats, PrayerTime.vitir).toString(),
+    );
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Baslangic Borclarini Duzenle',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              _DebtField(label: 'Sabah', controller: sabah),
+              _DebtField(label: 'Ogle', controller: ogle),
+              _DebtField(label: 'Ikindi', controller: ikindi),
+              _DebtField(label: 'Aksam', controller: aksam),
+              _DebtField(label: 'Yatsi', controller: yatsi),
+              _DebtField(label: 'Vitir', controller: vitir),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    final notifier = ref.read(userProfileProvider.notifier);
+                    await notifier.updateInitialDebts(
+                      sabah: _parseInt(sabah.text),
+                      ogle: _parseInt(ogle.text),
+                      ikindi: _parseInt(ikindi.text),
+                      aksam: _parseInt(aksam.text),
+                      yatsi: _parseInt(yatsi.text),
+                      vitir: _parseInt(vitir.text),
+                    );
+                    if (mounted) {
+                      ref.invalidate(statisticsProvider(_period));
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Baslangic borclari guncellendi.'),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Kaydet'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    sabah.dispose();
+    ogle.dispose();
+    ikindi.dispose();
+    aksam.dispose();
+    yatsi.dispose();
+    vitir.dispose();
+  }
+
+  int _initialFor(StatisticsData stats, PrayerTime prayerTime) {
+    return stats.debts
+        .firstWhere((item) => item.prayerTime == prayerTime)
+        .initial;
+  }
+
+  int _parseInt(String value) {
+    final parsed = int.tryParse(value.trim()) ?? 0;
+    return parsed < 0 ? 0 : parsed;
+  }
 
   String _label(PrayerTime prayerTime) {
     return switch (prayerTime) {
@@ -37,6 +140,13 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       child: statsAsync.when(
         data: (stats) {
+          if (stats.debts.isEmpty) {
+            return const _EmptyState(
+              icon: Icons.insights_outlined,
+              text: 'Henuz bir kayit yok. Hadi Bismillah deyip ilk adimini at!',
+            );
+          }
+
           return ListView(
             children: [
               _PeriodSelector(
@@ -44,6 +154,15 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                 onChanged: (value) => setState(() => _period = value),
               ),
               const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => _showEditDebtsSheet(stats),
+                  icon: const Icon(Icons.edit_note_rounded),
+                  label: const Text('Baslangic Borclarini Duzenle'),
+                ),
+              ),
+              const SizedBox(height: 4),
               _DebtSummaryCard(totalRemaining: stats.totalRemaining),
               const SizedBox(height: 12),
               _DebtTableCard(stats: stats, labelBuilder: _label),
@@ -240,6 +359,19 @@ class _ChartCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasData = chartTotals.values.any((value) => value > 0);
+    if (!hasData) {
+      return const Card(
+        child: SizedBox(
+          height: 180,
+          child: _EmptyState(
+            icon: Icons.bar_chart_rounded,
+            text: 'Grafik icin henuz veri yok. Ilk kaydinla burasi canlanacak!',
+          ),
+        ),
+      );
+    }
+
     final maxY = math
         .max(
           5,
@@ -325,6 +457,53 @@ class _ChartCard extends StatelessWidget {
                   }).toList(),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DebtField extends StatelessWidget {
+  const _DebtField({required this.label, required this.controller});
+
+  final String label;
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(labelText: '$label borcu (adet)'),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 36, color: AppColors.textMuted),
+            const SizedBox(height: 10),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textMuted),
             ),
           ],
         ),

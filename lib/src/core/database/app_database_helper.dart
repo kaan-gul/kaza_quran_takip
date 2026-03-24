@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -428,6 +430,104 @@ class AppDatabaseHelper {
       await txn.delete(kazaLogsTable);
       await txn.delete(quranLogsTable);
       await txn.delete(userProfileTable);
+    });
+  }
+
+  Future<bool> generateMockDataForLastDays({int days = 60}) async {
+    final db = await database;
+    final random = Random();
+
+    return db.transaction<bool>((txn) async {
+      final profileRows = await txn.query(userProfileTable, limit: 1);
+      if (profileRows.isEmpty) {
+        return false;
+      }
+
+      final profileRow = profileRows.first;
+
+      var incSabah = 0;
+      var incOgle = 0;
+      var incIkindi = 0;
+      var incAksam = 0;
+      var incYatsi = 0;
+      var incVitir = 0;
+      var gainedPoints = 0;
+
+      final today = DateTime.now();
+      for (var i = 0; i < days; i++) {
+        final day = DateTime(today.year, today.month, today.day - i);
+        final dayKey = _dateOnly(day);
+
+        for (final prayer in PrayerTime.values) {
+          final hasKaza = random.nextDouble() < 0.45;
+          if (!hasKaza) {
+            continue;
+          }
+
+          final count = random.nextInt(3) + 1;
+
+          await txn.insert(
+            kazaLogsTable,
+            <String, Object>{
+              'date': dayKey,
+              'prayer_time': prayer.name,
+              'count': count,
+              'created_at': DateTime.now().toIso8601String(),
+            },
+          );
+
+          gainedPoints += count;
+          if (prayer == PrayerTime.sabah) {
+            incSabah += count;
+          } else if (prayer == PrayerTime.ogle) {
+            incOgle += count;
+          } else if (prayer == PrayerTime.ikindi) {
+            incIkindi += count;
+          } else if (prayer == PrayerTime.aksam) {
+            incAksam += count;
+          } else if (prayer == PrayerTime.yatsi) {
+            incYatsi += count;
+          } else if (prayer == PrayerTime.vitir) {
+            incVitir += count;
+          }
+        }
+
+        final pages = random.nextInt(26);
+        if (pages > 0) {
+          await txn.insert(
+            quranLogsTable,
+            <String, Object>{
+              'date': dayKey,
+              'pages': pages,
+              'created_at': DateTime.now().toIso8601String(),
+            },
+          );
+          gainedPoints += pages;
+        }
+      }
+
+      final currentPoints = (profileRow['motivation_points'] as num?)?.toInt() ?? 0;
+      final totalPoints = currentPoints + gainedPoints;
+      final level = (totalPoints ~/ 10) + 1;
+
+      await txn.update(
+        userProfileTable,
+        <String, Object>{
+          'completed_sabah': ((profileRow['completed_sabah'] as num?)?.toInt() ?? 0) + incSabah,
+          'completed_ogle': ((profileRow['completed_ogle'] as num?)?.toInt() ?? 0) + incOgle,
+          'completed_ikindi': ((profileRow['completed_ikindi'] as num?)?.toInt() ?? 0) + incIkindi,
+          'completed_aksam': ((profileRow['completed_aksam'] as num?)?.toInt() ?? 0) + incAksam,
+          'completed_yatsi': ((profileRow['completed_yatsi'] as num?)?.toInt() ?? 0) + incYatsi,
+          'completed_vitir': ((profileRow['completed_vitir'] as num?)?.toInt() ?? 0) + incVitir,
+          'motivation_points': totalPoints,
+          'level': level,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: <Object>[(profileRow['id'] as num).toInt()],
+      );
+
+      return true;
     });
   }
 

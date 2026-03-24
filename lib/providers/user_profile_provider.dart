@@ -79,6 +79,37 @@ class UserProfileNotifier extends AsyncNotifier<UserProfileViewData?> {
     ref.invalidateSelf();
     await future;
   }
+
+  Future<void> updateInitialDebts({
+    required int sabah,
+    required int ogle,
+    required int ikindi,
+    required int aksam,
+    required int yatsi,
+    required int vitir,
+  }) async {
+    final db = ref.read(databaseProvider);
+    final existing = await db.getUserProfile();
+    if (existing == null) {
+      return;
+    }
+
+    final updated = existing.copyWith(
+      initialSabah: sabah,
+      initialOgle: ogle,
+      initialIkindi: ikindi,
+      initialAksam: aksam,
+      initialYatsi: yatsi,
+      initialVitir: vitir,
+      updatedAt: DateTime.now(),
+    );
+
+    await db.upsertUserProfile(updated);
+    ref.invalidate(statisticsProvider(StatisticsPeriod.weekly));
+    ref.invalidate(statisticsProvider(StatisticsPeriod.monthly));
+    ref.invalidateSelf();
+    await future;
+  }
 }
 
 final userProfileProvider =

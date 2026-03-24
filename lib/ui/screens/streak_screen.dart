@@ -128,6 +128,16 @@ class _KazaHeatGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasAnyData = days.any((day) => day.hasKaza);
+    if (!hasAnyData) {
+      return const _GridCard(
+        child: _EmptyStreakState(
+          icon: Icons.auto_graph_rounded,
+          text: 'Henuz bir kayit yok. Hadi Bismillah deyip ilk adimini at!',
+        ),
+      );
+    }
+
     return _GridCard(
       child: Wrap(
         spacing: 6,
@@ -185,6 +195,16 @@ class _QuranHeatGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasAnyData = days.any((day) => day.hasQuran);
+    if (!hasAnyData) {
+      return const _GridCard(
+        child: _EmptyStreakState(
+          icon: Icons.menu_book_rounded,
+          text: 'Henuz bir kayit yok. Hadi Bismillah deyip ilk adimini at!',
+        ),
+      );
+    }
+
     return _GridCard(
       child: Wrap(
         spacing: 6,
@@ -242,6 +262,37 @@ class _GridCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: child,
+      ),
+    );
+  }
+}
+
+class _EmptyStreakState extends StatelessWidget {
+  const _EmptyStreakState({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 120,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 34, color: AppColors.textMuted),
+              const SizedBox(height: 10),
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textMuted),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
