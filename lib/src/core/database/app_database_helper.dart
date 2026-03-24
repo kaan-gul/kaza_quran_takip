@@ -506,19 +506,31 @@ class AppDatabaseHelper {
         }
       }
 
-      final currentPoints = (profileRow['motivation_points'] as num?)?.toInt() ?? 0;
+      final currentPoints =
+          (profileRow['motivation_points'] as num?)?.toInt() ?? 0;
       final totalPoints = currentPoints + gainedPoints;
       final level = (totalPoints ~/ 10) + 1;
 
       await txn.update(
         userProfileTable,
         <String, Object>{
-          'completed_sabah': ((profileRow['completed_sabah'] as num?)?.toInt() ?? 0) + incSabah,
-          'completed_ogle': ((profileRow['completed_ogle'] as num?)?.toInt() ?? 0) + incOgle,
-          'completed_ikindi': ((profileRow['completed_ikindi'] as num?)?.toInt() ?? 0) + incIkindi,
-          'completed_aksam': ((profileRow['completed_aksam'] as num?)?.toInt() ?? 0) + incAksam,
-          'completed_yatsi': ((profileRow['completed_yatsi'] as num?)?.toInt() ?? 0) + incYatsi,
-          'completed_vitir': ((profileRow['completed_vitir'] as num?)?.toInt() ?? 0) + incVitir,
+          'completed_sabah':
+              ((profileRow['completed_sabah'] as num?)?.toInt() ?? 0) +
+                  incSabah,
+          'completed_ogle':
+              ((profileRow['completed_ogle'] as num?)?.toInt() ?? 0) + incOgle,
+          'completed_ikindi':
+              ((profileRow['completed_ikindi'] as num?)?.toInt() ?? 0) +
+                  incIkindi,
+          'completed_aksam':
+              ((profileRow['completed_aksam'] as num?)?.toInt() ?? 0) +
+                  incAksam,
+          'completed_yatsi':
+              ((profileRow['completed_yatsi'] as num?)?.toInt() ?? 0) +
+                  incYatsi,
+          'completed_vitir':
+              ((profileRow['completed_vitir'] as num?)?.toInt() ?? 0) +
+                  incVitir,
           'motivation_points': totalPoints,
           'level': level,
           'updated_at': DateTime.now().toIso8601String(),

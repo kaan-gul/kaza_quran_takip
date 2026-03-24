@@ -58,7 +58,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
       if (ok) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Son 60 gun icin test verisi uretildi.')),
+          const SnackBar(
+              content: Text('Son 60 gun icin test verisi uretildi.')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
