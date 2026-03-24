@@ -45,6 +45,7 @@ class KazaLogsNotifier extends AsyncNotifier<List<KazaLogModel>> {
     ref.invalidate(statisticsProvider(StatisticsPeriod.weekly));
     ref.invalidate(statisticsProvider(StatisticsPeriod.monthly));
     ref.invalidate(streakProvider);
+    ref.invalidate(prayerHistoryProvider);
     ref.invalidateSelf();
 
     final oldLevel = profileBefore?.level ?? 1;
@@ -65,6 +66,7 @@ class KazaLogsNotifier extends AsyncNotifier<List<KazaLogModel>> {
     ref.invalidate(statisticsProvider(StatisticsPeriod.weekly));
     ref.invalidate(statisticsProvider(StatisticsPeriod.monthly));
     ref.invalidate(streakProvider);
+    ref.invalidate(prayerHistoryProvider);
     ref.invalidateSelf();
     return removed;
   }
@@ -82,6 +84,7 @@ final kazaLogsProvider =
 
 final prayerHistoryProvider = FutureProvider.family<List<KazaLogModel>, String>(
   (ref, vakit) async {
+    ref.watch(kazaLogsProvider);
     final db = ref.watch(databaseProvider);
     return db.getLogsByPrayerTime(vakit);
   },

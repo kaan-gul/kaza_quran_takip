@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'providers/database_provider.dart';
 import 'ui/screens/main_layout.dart';
 import 'ui/screens/onboarding_screen.dart';
 import 'ui/theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('tr_TR');
   runApp(const ProviderScope(child: KazaQuranTakipApp()));
 }
 
