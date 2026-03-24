@@ -16,6 +16,16 @@ class StreakDayData {
 
   bool get hasKaza => kazaCounts.values.any((value) => value > 0);
   bool get hasQuran => quranPages > 0;
+
+  int get totalKazaCount {
+    return kazaCounts.values.fold<int>(0, (sum, value) => sum + value);
+  }
+
+  Map<PrayerTime, int> get nonZeroKazaDetails {
+    return Map<PrayerTime, int>.fromEntries(
+      kazaCounts.entries.where((entry) => entry.value > 0),
+    );
+  }
 }
 
 class StreakData {

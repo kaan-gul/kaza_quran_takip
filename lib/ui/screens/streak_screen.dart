@@ -223,17 +223,16 @@ class _KazaLegend extends StatelessWidget {
               spacing: 12,
               runSpacing: 10,
               children: [
-                _LegendChip(color: AppColors.sabah, label: 'Sabah'),
-                _LegendChip(color: AppColors.ogle, label: 'Öğle'),
-                _LegendChip(color: AppColors.ikindi, label: 'İkindi'),
-                _LegendChip(color: AppColors.aksam, label: 'Akşam'),
-                _LegendChip(color: AppColors.yatsi, label: 'Yatsı'),
-                _LegendChip(color: AppColors.vitir, label: 'Vitir'),
+                _LegendChip(color: Color(0xFFCFD8DC), label: '0 Kaza'),
+                _LegendChip(color: Color(0x4D2196F3), label: '1-2 Kaza'),
+                _LegendChip(color: Color(0x992196F3), label: '3-4 Kaza'),
+                _LegendChip(color: Color(0xD92196F3), label: '5-6 Kaza'),
+                _LegendChip(color: Color(0xFF2196F3), label: '7+ Kaza'),
               ],
             ),
             SizedBox(height: 10),
             Text(
-              'Renkler o gün o vakitten kılınan kaza sayısına göre koyulaşır.',
+              'Mavi tonunun koyuluğu, o gün kılınan toplam kaza sayısına göre artar.',
               style: TextStyle(color: AppColors.textMuted),
             ),
           ],
@@ -315,37 +314,10 @@ class _KazaHeatGrid extends StatelessWidget {
         spacing: 7,
         runSpacing: 7,
         children: days.map((day) {
-          return Tooltip(
-            message: _tooltip(day),
-            child: SizedBox(
-              width: 17,
-              height: 17,
-              child: CustomPaint(
-                painter: KazaStreakCellPainter(kazaCounts: day.kazaCounts),
-              ),
-            ),
-          );
+          return _KazaDayCell(day: day, prayerLabelBuilder: _prayerLabel);
         }).toList(),
       ),
     );
-  }
-
-  String _tooltip(StreakDayData day) {
-    final date =
-        '${day.date.day.toString().padLeft(2, '0')}.${day.date.month.toString().padLeft(2, '0')}.${day.date.year}';
-    if (!day.hasKaza) {
-      return '$date - Kaza yok';
-    }
-
-    final lines = <String>[];
-    for (final prayer in PrayerTime.values) {
-      final count = day.kazaCounts[prayer] ?? 0;
-      if (count <= 0) {
-        continue;
-      }
-      lines.add('${_prayerLabel(prayer)}: $count');
-    }
-    return '$date\n${lines.join(', ')}';
   }
 
   String _prayerLabel(PrayerTime prayerTime) {
@@ -471,58 +443,80 @@ class _EmptyStreakState extends StatelessWidget {
   }
 }
 
-class KazaStreakCellPainter extends CustomPainter {
-  const KazaStreakCellPainter({required this.kazaCounts});
+class _KazaDayCell extends StatelessWidget {
+  const _KazaDayCell({required this.day, required this.prayerLabelBuilder});
 
-  final Map<PrayerTime, int> kazaCounts;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(4));
-
-    canvas.save();
-    canvas.clipRRect(rrect);
-
-    final active =
-        PrayerTime.values.where((item) => (kazaCounts[item] ?? 0) > 0).toList();
-
-    if (active.isEmpty) {
-      final paint = Paint()..color = const Color(0xFFE5E7EB);
-      canvas.drawRect(rect, paint);
-      canvas.restore();
-      return;
-    }
-
-    final segmentWidth = size.width / active.length;
-
-    for (var i = 0; i < active.length; i++) {
-      final prayer = active[i];
-      final count = kazaCounts[prayer] ?? 0;
-      final alpha = _alphaByCount(count);
-      final color = AppColors.prayerColor(prayer).withValues(alpha: alpha);
-      final paint = Paint()..color = color;
-
-      final left = i * segmentWidth;
-      final segment = Rect.fromLTWH(left, 0, segmentWidth + 0.1, size.height);
-      canvas.drawRect(segment, paint);
-    }
-
-    canvas.restore();
-  }
-
-  double _alphaByCount(int count) {
-    if (count <= 1) {
-      return 0.40;
-    }
-    if (count == 2) {
-      return 0.70;
-    }
-    return 1.0;
-  }
+  final StreakDayData day;
+  final String Function(PrayerTime) prayerLabelBuilder;
 
   @override
-  bool shouldRepaint(covariant KazaStreakCellPainter oldDelegate) {
-    return oldDelegate.kazaCounts != kazaCounts;
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showDayDetailDialog(context),
+      child: Container(
+        width: 17,
+        height: 17,
+        decoration: BoxDecoration(
+          color: _kazaColor(context, day.totalKazaCount),
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+    );
+  }
+
+  Color _kazaColor(BuildContext context, int total) {
+    if (total <= 0) {
+      return Theme.of(context).colorScheme.surfaceContainerHighest;
+    }
+
+    final baseBlue = Theme.of(context).colorScheme.primary;
+    if (total <= 2) {
+      return baseBlue.withValues(alpha: 0.30);
+    }
+    if (total <= 4) {
+      return baseBlue.withValues(alpha: 0.60);
+    }
+    if (total <= 6) {
+      return baseBlue.withValues(alpha: 0.85);
+    }
+    return baseBlue.withValues(alpha: 1.0);
+  }
+
+  Future<void> _showDayDetailDialog(BuildContext context) async {
+    final date =
+        '${day.date.day.toString().padLeft(2, '0')}.${day.date.month.toString().padLeft(2, '0')}.${day.date.year}';
+    final details = day.nonZeroKazaDetails;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(date),
+          content: details.isEmpty
+              ? const Text('Kayıt yok')
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: PrayerTime.values
+                      .where((prayer) => (details[prayer] ?? 0) > 0)
+                      .map(
+                        (prayer) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            '${prayerLabelBuilder(prayer)}: ${details[prayer]}',
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Kapat'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
