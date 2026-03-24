@@ -19,9 +19,9 @@ class StreakScreen extends ConsumerWidget {
           return ListView(
             children: [
               _StreakHeader(
-                title: 'Kaza Namazi Serisi',
+                title: 'Kaza Namazı Serisi',
                 subtitle:
-                    'Kutular o gun kilinan vakit sayisina gore dikey seritlere ayrilir.',
+                    'Kutular o gün kılınan vakit sayısına göre dikey şeritlere ayrılır.',
                 streak: data.kazaCurrentStreak,
                 icon: Icons.local_fire_department_rounded,
                 badgeColor: const Color(0xFFFEF3C7),
@@ -33,7 +33,7 @@ class StreakScreen extends ConsumerWidget {
               _StreakHeader(
                 title: 'Kuran Okuma Serisi',
                 subtitle:
-                    'Yesil ton koyulastikca o gun daha fazla sayfa okunmus demektir.',
+                    'Yeşil ton koyulaştıkça o gün daha fazla sayfa okunmuş demektir.',
                 streak: data.quranCurrentStreak,
                 icon: Icons.menu_book_rounded,
                 badgeColor: const Color(0xFFD1FAE5),
@@ -70,7 +70,8 @@ class _StreakHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Card.filled(
+      color: Theme.of(context).colorScheme.surfaceContainer,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -100,7 +101,7 @@ class _StreakHeader extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    '$streak gun',
+                    '$streak gün',
                     style: TextStyle(
                       color: textColor,
                       fontWeight: FontWeight.w700,
@@ -133,7 +134,7 @@ class _KazaHeatGrid extends StatelessWidget {
       return const _GridCard(
         child: _EmptyStreakState(
           icon: Icons.auto_graph_rounded,
-          text: 'Henuz bir kayit yok. Hadi Bismillah deyip ilk adimini at!',
+          text: 'Henüz bir kayıt yok. Hadi Bismillah deyip ilk adımını at!',
         ),
       );
     }
@@ -179,10 +180,10 @@ class _KazaHeatGrid extends StatelessWidget {
   String _prayerLabel(PrayerTime prayerTime) {
     return switch (prayerTime) {
       PrayerTime.sabah => 'Sabah',
-      PrayerTime.ogle => 'Ogle',
-      PrayerTime.ikindi => 'Ikindi',
-      PrayerTime.aksam => 'Aksam',
-      PrayerTime.yatsi => 'Yatsi',
+      PrayerTime.ogle => 'Öğle',
+      PrayerTime.ikindi => 'İkindi',
+      PrayerTime.aksam => 'Akşam',
+      PrayerTime.yatsi => 'Yatsı',
       PrayerTime.vitir => 'Vitir',
     };
   }
@@ -200,7 +201,7 @@ class _QuranHeatGrid extends StatelessWidget {
       return const _GridCard(
         child: _EmptyStreakState(
           icon: Icons.menu_book_rounded,
-          text: 'Henuz bir kayit yok. Hadi Bismillah deyip ilk adimini at!',
+          text: 'Henüz bir kayıt yok. Hadi Bismillah deyip ilk adımını at!',
         ),
       );
     }
@@ -257,10 +258,11 @@ class _GridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Card.filled(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: child,
       ),
     );

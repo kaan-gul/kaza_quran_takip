@@ -26,10 +26,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _prayerLabel(PrayerTime prayerTime) {
     return switch (prayerTime) {
       PrayerTime.sabah => 'Sabah',
-      PrayerTime.ogle => 'Ogle',
-      PrayerTime.ikindi => 'Ikindi',
-      PrayerTime.aksam => 'Aksam',
-      PrayerTime.yatsi => 'Yatsi',
+      PrayerTime.ogle => 'Öğle',
+      PrayerTime.ikindi => 'İkindi',
+      PrayerTime.aksam => 'Akşam',
+      PrayerTime.yatsi => 'Yatsı',
       PrayerTime.vitir => 'Vitir',
     };
   }
@@ -45,7 +45,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final message = result.levelUp
         ? 'Tebrikler! Seviye ${result.newLevel} oldun.'
-        : 'Harika, 1 adim daha yaklastin!';
+        : 'Harika, 1 adım daha yaklaştın!';
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -56,7 +56,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final pages = int.tryParse(_quranPagesController.text.trim()) ?? 0;
     if (pages <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lutfen gecerli bir sayfa sayisi gir.')),
+        const SnackBar(content: Text('Lütfen geçerli bir sayfa sayısı gir.')),
       );
       return;
     }
@@ -96,7 +96,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Bugune Kadar Kilinan Toplam Kaza Sayilari',
+              'Bugüne Kadar Kılınan Toplam Kaza Sayıları',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
@@ -113,7 +113,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               );
             }),
             const SizedBox(height: 10),
-            Card(
+            Card.filled(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -123,7 +123,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Bugun kac sayfa Kuran okudun?',
+                      'Bugün kaç sayfa Kuran okudun?',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -137,17 +137,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             controller: _quranPagesController,
                             keyboardType: TextInputType.number,
                             decoration: const InputDecoration(
+                              labelText: 'Sayfa',
+                              prefixIcon: Icon(Icons.menu_book_outlined),
                               hintText: 'Orn: 5',
                             ),
                           ),
                         ),
                         const SizedBox(width: 10),
-                        FilledButton(
+                        FilledButton.icon(
                           onPressed: _onAddQuranPages,
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.quranEmerald,
                           ),
-                          child: const Text('Ekle'),
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Ekle'),
                         ),
                       ],
                     ),
@@ -202,7 +205,7 @@ class _LevelCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Motivasyon Puani: $points',
+            'Motivasyon Puanı: $points',
             style: const TextStyle(color: Colors.white70),
           ),
           const SizedBox(height: 12),
@@ -217,7 +220,7 @@ class _LevelCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Sonraki level icin $pointsToNextLevel puan kaldi',
+            'Sonraki level için $pointsToNextLevel puan kaldı',
             style: const TextStyle(color: Colors.white70),
           ),
         ],
@@ -241,7 +244,7 @@ class _PrayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Card.filled(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -268,17 +271,20 @@ class _PrayerCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text('Bugune kadar kilinan toplam: $total'),
+                  Text('Bugüne kadar kılınan toplam: $total'),
                 ],
               ),
             ),
             FilledButton.tonalIcon(
               onPressed: onTap,
-              icon: const Icon(Icons.add_circle_outline_rounded),
-              label: const Text('Kildim'),
+              icon: const Icon(Icons.check_circle_outline_rounded),
+              label: const Text('Kıldım'),
               style: FilledButton.styleFrom(
-                foregroundColor: color,
-                backgroundColor: color.withValues(alpha: 0.12),
+                foregroundColor: color.withValues(alpha: 0.95),
+                backgroundColor: color.withValues(alpha: 0.16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],

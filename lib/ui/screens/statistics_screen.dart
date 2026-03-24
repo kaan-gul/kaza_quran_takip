@@ -46,6 +46,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      showDragHandle: true,
       builder: (context) {
         return Padding(
           padding: EdgeInsets.only(
@@ -59,15 +60,15 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Baslangic Borclarini Duzenle',
+                'Başlangıç Borçlarını Düzenle',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
               _DebtField(label: 'Sabah', controller: sabah),
-              _DebtField(label: 'Ogle', controller: ogle),
-              _DebtField(label: 'Ikindi', controller: ikindi),
-              _DebtField(label: 'Aksam', controller: aksam),
-              _DebtField(label: 'Yatsi', controller: yatsi),
+              _DebtField(label: 'Öğle', controller: ogle),
+              _DebtField(label: 'İkindi', controller: ikindi),
+              _DebtField(label: 'Akşam', controller: aksam),
+              _DebtField(label: 'Yatsı', controller: yatsi),
               _DebtField(label: 'Vitir', controller: vitir),
               const SizedBox(height: 12),
               SizedBox(
@@ -83,15 +84,14 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                       yatsi: _parseInt(yatsi.text),
                       vitir: _parseInt(vitir.text),
                     );
-                    if (mounted) {
-                      ref.invalidate(statisticsProvider(_period));
-                      Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Baslangic borclari guncellendi.'),
-                        ),
-                      );
-                    }
+                    if (!context.mounted) return;
+                    ref.invalidate(statisticsProvider(_period));
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Başlangıç borçları güncellendi.'),
+                      ),
+                    );
                   },
                   child: const Text('Kaydet'),
                 ),
@@ -124,10 +124,10 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
   String _label(PrayerTime prayerTime) {
     return switch (prayerTime) {
       PrayerTime.sabah => 'Sabah',
-      PrayerTime.ogle => 'Ogle',
-      PrayerTime.ikindi => 'Ikindi',
-      PrayerTime.aksam => 'Aksam',
-      PrayerTime.yatsi => 'Yatsi',
+      PrayerTime.ogle => 'Öğle',
+      PrayerTime.ikindi => 'İkindi',
+      PrayerTime.aksam => 'Akşam',
+      PrayerTime.yatsi => 'Yatsı',
       PrayerTime.vitir => 'Vitir',
     };
   }
@@ -143,7 +143,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
           if (stats.debts.isEmpty) {
             return const _EmptyState(
               icon: Icons.insights_outlined,
-              text: 'Henuz bir kayit yok. Hadi Bismillah deyip ilk adimini at!',
+              text: 'Henüz bir kayıt yok. Hadi Bismillah deyip ilk adımını at!',
             );
           }
 
@@ -159,7 +159,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                 child: TextButton.icon(
                   onPressed: () => _showEditDebtsSheet(stats),
                   icon: const Icon(Icons.edit_note_rounded),
-                  label: const Text('Baslangic Borclarini Duzenle'),
+                  label: const Text('Başlangıç Borçlarını Düzenle'),
                 ),
               ),
               const SizedBox(height: 4),
@@ -194,7 +194,7 @@ class _PeriodSelector extends StatelessWidget {
       segments: const <ButtonSegment<StatisticsPeriod>>[
         ButtonSegment<StatisticsPeriod>(
           value: StatisticsPeriod.weekly,
-          label: Text('Son 7 Gun'),
+          label: Text('Son 7 Gün'),
           icon: Icon(Icons.date_range_rounded),
         ),
         ButtonSegment<StatisticsPeriod>(
@@ -216,11 +216,13 @@ class _DebtSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
+        color: scheme.surfaceContainerHighest,
       ),
       child: Row(
         children: [
@@ -264,7 +266,8 @@ class _DebtTableCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Card.outlined(
+      color: Theme.of(context).colorScheme.surfaceContainer,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -280,14 +283,14 @@ class _DebtTableCard extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    'Baslangic',
+                    'Başlangıç',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
                 Expanded(
                   child: Text(
-                    'Kilinan',
+                    'Kılınan',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
@@ -361,12 +364,13 @@ class _ChartCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasData = chartTotals.values.any((value) => value > 0);
     if (!hasData) {
-      return const Card(
-        child: SizedBox(
+      return Card.outlined(
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        child: const SizedBox(
           height: 180,
           child: _EmptyState(
             icon: Icons.bar_chart_rounded,
-            text: 'Grafik icin henuz veri yok. Ilk kaydinla burasi canlanacak!',
+            text: 'Grafik için henüz veri yok. İlk kaydınla burası canlanacak!',
           ),
         ),
       );
@@ -385,7 +389,8 @@ class _ChartCard extends StatelessWidget {
         )
         .toDouble();
 
-    return Card(
+    return Card.outlined(
+      color: Theme.of(context).colorScheme.surfaceContainer,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
@@ -394,8 +399,8 @@ class _ChartCard extends StatelessWidget {
           children: [
             Text(
               period == StatisticsPeriod.weekly
-                  ? 'Son 7 Gunde Kilinan Kaza Dagilimi'
-                  : 'Bu Ay Kilinan Kaza Dagilimi',
+                  ? 'Son 7 Günde Kılınan Kaza Dağılımı'
+                  : 'Bu Ay Kılınan Kaza Dağılımı',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),

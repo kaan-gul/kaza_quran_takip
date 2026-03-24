@@ -25,7 +25,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   static const _titles = <String>[
     'Ana Sayfa',
-    'Istatistikler',
+    'İstatistikler',
     'Seriler',
   ];
 
@@ -59,11 +59,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       if (ok) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Son 60 gun icin test verisi uretildi.')),
+              content: Text('Son 60 gün için test verisi üretildi.')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Once profil olusturulmalidir.')),
+          const SnackBar(content: Text('Önce profil oluşturulmalıdır.')),
         );
       }
     } finally {
@@ -82,7 +82,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           if (kDebugMode && (_currentIndex == 1 || _currentIndex == 2))
             IconButton(
               onPressed: _isGenerating ? null : _generateMockData,
-              tooltip: 'Test Verisi Uret',
+              tooltip: 'Test Verisi Üret',
               icon: _isGenerating
                   ? const SizedBox(
                       width: 18,
@@ -94,22 +94,25 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         ],
       ),
       body: IndexedStack(index: _currentIndex, children: _pages),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) {
           setState(() => _currentIndex = index);
         },
-        items: const [
-          BottomNavigationBarItem(
+        destinations: const [
+          NavigationDestination(
             icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
             label: 'Ana Sayfa',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(Icons.bar_chart_outlined),
-            label: 'Istatistikler',
+            selectedIcon: Icon(Icons.bar_chart_rounded),
+            label: 'İstatistikler',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month_rounded),
             label: 'Seriler',
           ),
         ],

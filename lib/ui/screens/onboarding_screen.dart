@@ -63,13 +63,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Baslangic profili kaydedildi.')),
+          const SnackBar(content: Text('Başlangıç profili kaydedildi.')),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kayit sirasinda bir hata olustu.')),
+          const SnackBar(content: Text('Kayıt sırasında bir hata oluştu.')),
         );
       }
     } finally {
@@ -83,10 +83,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     final fields = <({String title, TextEditingController controller})>[
       (title: 'Sabah', controller: _sabahController),
-      (title: 'Ogle', controller: _ogleController),
-      (title: 'Ikindi', controller: _ikindiController),
-      (title: 'Aksam', controller: _aksamController),
-      (title: 'Yatsi', controller: _yatsiController),
+      (title: 'Öğle', controller: _ogleController),
+      (title: 'İkindi', controller: _ikindiController),
+      (title: 'Akşam', controller: _aksamController),
+      (title: 'Yatsı', controller: _yatsiController),
       (title: 'Vitir', controller: _vitirController),
     ];
 
@@ -101,17 +101,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               children: [
                 const SizedBox(height: 12),
                 const Text(
-                  'Hos geldin',
+                  'Hoş geldin',
                   style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Gecmis kaza namazi borclarini gir. Bu bilgi sadece takip icin kullanilir.',
+                  'Geçmiş kaza namazı borçlarını gir. Bu bilgi sadece takip için kullanılır.',
                   style: TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Gecmis Kaza Namazi Borclari',
+                  'Geçmiş Kaza Namazı Borçları',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 16),
@@ -130,7 +130,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         }
                         final parsed = int.tryParse(value.trim());
                         if (parsed == null || parsed < 0) {
-                          return 'Lutfen 0 veya pozitif bir sayi gir';
+                          return 'Lütfen 0 veya pozitif bir sayı gir';
                         }
                         return null;
                       },
@@ -149,7 +149,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.rocket_launch_rounded),
-                    label: const Text('Kaydet ve Basla'),
+                    label: const Text('Kaydet ve Başla'),
                   ),
                 ),
               ],
