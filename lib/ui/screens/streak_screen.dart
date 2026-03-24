@@ -260,7 +260,8 @@ class KazaStreakCellPainter extends CustomPainter {
     canvas.save();
     canvas.clipRRect(rrect);
 
-    final active = PrayerTime.values.where((item) => (kazaCounts[item] ?? 0) > 0).toList();
+    final active =
+        PrayerTime.values.where((item) => (kazaCounts[item] ?? 0) > 0).toList();
 
     if (active.isEmpty) {
       final paint = Paint()..color = const Color(0xFFE5E7EB);

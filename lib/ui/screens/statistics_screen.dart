@@ -240,16 +240,18 @@ class _ChartCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxY = math.max(
-      5,
-      chartTotals.values.fold<int>(0, (maxValue, value) {
-            if (value > maxValue) {
-              return value;
-            }
-            return maxValue;
-          }) +
-          2,
-    ).toDouble();
+    final maxY = math
+        .max(
+          5,
+          chartTotals.values.fold<int>(0, (maxValue, value) {
+                if (value > maxValue) {
+                  return value;
+                }
+                return maxValue;
+              }) +
+              2,
+        )
+        .toDouble();
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -281,7 +283,8 @@ class _ChartCard extends StatelessWidget {
                       sideTitles: SideTitles(showTitles: false),
                     ),
                     leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+                      sideTitles:
+                          SideTitles(showTitles: true, reservedSize: 28),
                     ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(

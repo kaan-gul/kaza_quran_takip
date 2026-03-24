@@ -30,7 +30,8 @@ class StatisticsData {
 }
 
 final statisticsProvider =
-    FutureProvider.family<StatisticsData, StatisticsPeriod>((ref, period) async {
+    FutureProvider.family<StatisticsData, StatisticsPeriod>(
+        (ref, period) async {
   final db = ref.watch(databaseProvider);
   final profile = await db.getUserProfile();
 
