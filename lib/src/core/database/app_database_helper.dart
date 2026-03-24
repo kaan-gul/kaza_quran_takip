@@ -147,6 +147,65 @@ class AppDatabaseHelper {
     });
   }
 
+  Future<int> undoTodayKaza({
+    required PrayerTime prayerTime,
+    int decrementBy = 1,
+  }) async {
+    if (decrementBy <= 0) {
+      return 0;
+    }
+
+    final db = await database;
+    final today = _dateOnly(DateTime.now());
+
+    return db.transaction<int>((txn) async {
+      final rows = await txn.query(
+        kazaLogsTable,
+        where: 'date = ? AND prayer_time = ?',
+        whereArgs: <Object>[today, prayerTime.name],
+        orderBy: 'id DESC',
+        limit: 1,
+      );
+
+      if (rows.isEmpty) {
+        return 0;
+      }
+
+      final row = rows.first;
+      final id = (row['id'] as num).toInt();
+      final currentCount = (row['count'] as num?)?.toInt() ?? 0;
+      if (currentCount <= 0) {
+        return 0;
+      }
+
+      final removed = currentCount >= decrementBy ? decrementBy : currentCount;
+      final nextCount = currentCount - removed;
+
+      if (nextCount > 0) {
+        await txn.update(
+          kazaLogsTable,
+          <String, Object>{'count': nextCount},
+          where: 'id = ?',
+          whereArgs: <Object>[id],
+        );
+      } else {
+        await txn.delete(
+          kazaLogsTable,
+          where: 'id = ?',
+          whereArgs: <Object>[id],
+        );
+      }
+
+      await _decreaseCompletedAndMotivation(
+        txn: txn,
+        prayerTime: prayerTime,
+        decrementBy: removed,
+      );
+
+      return removed;
+    });
+  }
+
   Future<void> _increaseCompletedAndMotivation({
     required Transaction txn,
     required PrayerTime prayerTime,
@@ -171,6 +230,51 @@ class AppDatabaseHelper {
     final newCompleted = currentCompleted + incrementBy;
 
     final pointsAfter = profile.motivationPoints + incrementBy;
+    final levelAfter = (pointsAfter ~/ 10) + 1;
+
+    await txn.update(
+      userProfileTable,
+      <String, Object>{
+        column: newCompleted,
+        'motivation_points': pointsAfter,
+        'level': levelAfter,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: <Object>[profile.id ?? 1],
+    );
+  }
+
+  Future<void> _decreaseCompletedAndMotivation({
+    required Transaction txn,
+    required PrayerTime prayerTime,
+    required int decrementBy,
+  }) async {
+    if (decrementBy <= 0) {
+      return;
+    }
+
+    final profileRows = await txn.query(userProfileTable, limit: 1);
+    if (profileRows.isEmpty) {
+      return;
+    }
+
+    final profile = UserProfileModel.fromMap(profileRows.first);
+    final column = switch (prayerTime) {
+      PrayerTime.sabah => 'completed_sabah',
+      PrayerTime.ogle => 'completed_ogle',
+      PrayerTime.ikindi => 'completed_ikindi',
+      PrayerTime.aksam => 'completed_aksam',
+      PrayerTime.yatsi => 'completed_yatsi',
+      PrayerTime.vitir => 'completed_vitir',
+    };
+
+    final currentCompleted = (profileRows.first[column] as num?)?.toInt() ?? 0;
+    final newCompleted =
+        (currentCompleted - decrementBy).clamp(0, currentCompleted);
+
+    final pointsAfter = (profile.motivationPoints - decrementBy)
+        .clamp(0, profile.motivationPoints);
     final levelAfter = (pointsAfter ~/ 10) + 1;
 
     await txn.update(
@@ -228,6 +332,57 @@ class AppDatabaseHelper {
     });
   }
 
+  Future<int> removeTodayQuranPages({int pagesToRemove = 1}) async {
+    if (pagesToRemove <= 0) {
+      return 0;
+    }
+
+    final db = await database;
+    final today = _dateOnly(DateTime.now());
+
+    return db.transaction<int>((txn) async {
+      final rows = await txn.query(
+        quranLogsTable,
+        where: 'date = ?',
+        whereArgs: <Object>[today],
+        limit: 1,
+      );
+
+      if (rows.isEmpty) {
+        return 0;
+      }
+
+      final row = rows.first;
+      final id = (row['id'] as num).toInt();
+      final currentPages = (row['pages'] as num?)?.toInt() ?? 0;
+      if (currentPages <= 0) {
+        return 0;
+      }
+
+      final removed =
+          currentPages >= pagesToRemove ? pagesToRemove : currentPages;
+      final nextPages = currentPages - removed;
+
+      if (nextPages > 0) {
+        await txn.update(
+          quranLogsTable,
+          <String, Object>{'pages': nextPages},
+          where: 'id = ?',
+          whereArgs: <Object>[id],
+        );
+      } else {
+        await txn.delete(
+          quranLogsTable,
+          where: 'id = ?',
+          whereArgs: <Object>[id],
+        );
+      }
+
+      await _decreaseMotivationFromQuran(txn: txn, pages: removed);
+      return removed;
+    });
+  }
+
   Future<void> _increaseMotivationFromQuran({
     required Transaction txn,
     required int pages,
@@ -240,6 +395,36 @@ class AppDatabaseHelper {
     final profile = UserProfileModel.fromMap(profileRows.first);
     final gainedPoints = pages;
     final pointsAfter = profile.motivationPoints + gainedPoints;
+    final levelAfter = (pointsAfter ~/ 10) + 1;
+
+    await txn.update(
+      userProfileTable,
+      <String, Object>{
+        'motivation_points': pointsAfter,
+        'level': levelAfter,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: <Object>[profile.id ?? 1],
+    );
+  }
+
+  Future<void> _decreaseMotivationFromQuran({
+    required Transaction txn,
+    required int pages,
+  }) async {
+    if (pages <= 0) {
+      return;
+    }
+
+    final profileRows = await txn.query(userProfileTable, limit: 1);
+    if (profileRows.isEmpty) {
+      return;
+    }
+
+    final profile = UserProfileModel.fromMap(profileRows.first);
+    final pointsAfter =
+        (profile.motivationPoints - pages).clamp(0, profile.motivationPoints);
     final levelAfter = (pointsAfter ~/ 10) + 1;
 
     await txn.update(
@@ -277,6 +462,23 @@ class AppDatabaseHelper {
       where: whereParts.isEmpty ? null : whereParts.join(' AND '),
       whereArgs: whereArgs.isEmpty ? null : whereArgs,
       orderBy: 'date DESC',
+    );
+
+    return maps.map(KazaLogModel.fromMap).toList();
+  }
+
+  Future<List<KazaLogModel>> getLogsByPrayerTime(String vakit) async {
+    final db = await database;
+    final prayerKey = _normalizePrayerKey(vakit);
+    if (prayerKey == null) {
+      return const <KazaLogModel>[];
+    }
+
+    final maps = await db.query(
+      kazaLogsTable,
+      where: 'prayer_time = ?',
+      whereArgs: <Object>[prayerKey],
+      orderBy: 'date DESC, id DESC',
     );
 
     return maps.map(KazaLogModel.fromMap).toList();
@@ -442,5 +644,28 @@ class AppDatabaseHelper {
   String _dateOnly(DateTime value) {
     final normalized = DateTime(value.year, value.month, value.day);
     return normalized.toIso8601String().split('T').first;
+  }
+
+  String? _normalizePrayerKey(String vakit) {
+    final value = vakit.trim().toLowerCase();
+    switch (value) {
+      case 'sabah':
+        return PrayerTime.sabah.name;
+      case 'öğle':
+      case 'ogle':
+        return PrayerTime.ogle.name;
+      case 'ikindi':
+        return PrayerTime.ikindi.name;
+      case 'akşam':
+      case 'aksam':
+        return PrayerTime.aksam.name;
+      case 'yatsı':
+      case 'yatsi':
+        return PrayerTime.yatsi.name;
+      case 'vitir':
+        return PrayerTime.vitir.name;
+      default:
+        return null;
+    }
   }
 }

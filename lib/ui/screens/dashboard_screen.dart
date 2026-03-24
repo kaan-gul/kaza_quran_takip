@@ -6,6 +6,7 @@ import '../../providers/quran_logs_provider.dart';
 import '../../providers/user_profile_provider.dart';
 import '../../src/features/kaza/domain/entities/prayer_time.dart';
 import '../theme/app_colors.dart';
+import 'prayer_history_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -16,6 +17,12 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final _quranPagesController = TextEditingController();
+
+  String _todayKey() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return today.toIso8601String().split('T').first;
+  }
 
   @override
   void dispose() {
@@ -79,9 +86,93 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  Future<void> _onUndoKaza(PrayerTime prayerTime) async {
+    final removed = await ref
+        .read(kazaLogsProvider.notifier)
+        .undoTodayKaza(prayerTime: prayerTime);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (removed <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bugün geri alınacak kaza yok.'),
+          duration: Duration(milliseconds: 1000),
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text('$removed ${_prayerLabel(prayerTime)} kazası geri alındı ↩️'),
+        duration: const Duration(milliseconds: 1000),
+      ),
+    );
+  }
+
+  Future<void> _onRemoveQuranPages() async {
+    final rawInput = _quranPagesController.text.trim();
+    final pages = rawInput.isEmpty ? 1 : int.tryParse(rawInput);
+
+    if (pages == null || pages <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen geçerli bir sayfa sayısı gir.'),
+          duration: Duration(milliseconds: 1000),
+        ),
+      );
+      return;
+    }
+
+    final removed =
+        await ref.read(quranLogsProvider.notifier).removeTodayPages(pages);
+    _quranPagesController.clear();
+
+    if (!mounted) {
+      return;
+    }
+
+    if (removed <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bugün çıkarılacak sayfa yok.'),
+          duration: Duration(milliseconds: 1000),
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$removed sayfa çıkarıldı ↩️'),
+        duration: const Duration(milliseconds: 1000),
+      ),
+    );
+  }
+
+  void _openPrayerHistory({
+    required String prayerName,
+    required Color prayerColor,
+  }) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PrayerHistoryScreen(
+          prayerName: prayerName,
+          prayerColor: prayerColor,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(userProfileProvider);
+    final kazaLogsAsync = ref.watch(kazaLogsProvider);
+    final quranLogsAsync = ref.watch(quranLogsProvider);
 
     return profileAsync.when(
       data: (data) {
@@ -92,6 +183,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         }
 
         final profile = data.profile;
+        final today = _todayKey();
+
+        final todayKazaByPrayer = <PrayerTime, int>{
+          for (final prayer in PrayerTime.values) prayer: 0,
+        };
+
+        final kazaLogs = kazaLogsAsync.valueOrNull ?? const [];
+        for (final log in kazaLogs) {
+          final date = DateTime(log.date.year, log.date.month, log.date.day)
+              .toIso8601String()
+              .split('T')
+              .first;
+          if (date != today) {
+            continue;
+          }
+          todayKazaByPrayer[log.prayerTime] =
+              (todayKazaByPrayer[log.prayerTime] ?? 0) + log.count;
+        }
+
+        final quranLogs = quranLogsAsync.valueOrNull ?? const [];
+        final todayQuranPages = quranLogs
+            .where(
+              (log) =>
+                  DateTime(log.date.year, log.date.month, log.date.day)
+                      .toIso8601String()
+                      .split('T')
+                      .first ==
+                  today,
+            )
+            .fold<int>(0, (sum, log) => sum + log.pages);
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -110,12 +231,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const SizedBox(height: 12),
             ...PrayerTime.values.map((time) {
               final total = data.completedByPrayer[time] ?? 0;
+              final prayerName = _prayerLabel(time);
+              final prayerColor = AppColors.prayerColor(time);
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: _PrayerCard(
-                  title: _prayerLabel(time),
+                  title: prayerName,
                   total: total,
-                  color: AppColors.prayerColor(time),
+                  canUndo: (todayKazaByPrayer[time] ?? 0) > 0,
+                  color: prayerColor,
+                  onCardTap: () => _openPrayerHistory(
+                    prayerName: prayerName,
+                    prayerColor: prayerColor,
+                  ),
+                  onUndo: () => _onUndoKaza(time),
                   onTap: () => _onAddKaza(time),
                 ),
               );
@@ -152,6 +282,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ),
                         const SizedBox(width: 10),
+                        IconButton.filledTonal(
+                          onPressed:
+                              todayQuranPages > 0 ? _onRemoveQuranPages : null,
+                          icon: const Icon(Icons.remove_rounded),
+                          tooltip: 'Sayfa çıkar',
+                          style: IconButton.styleFrom(
+                            foregroundColor:
+                                AppColors.quranEmerald.withValues(alpha: 0.92),
+                            backgroundColor:
+                                AppColors.quranEmerald.withValues(alpha: 0.16),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         _PressAnimatedQuranAddButton(
                           onPressed: () {
                             _onAddQuranPages();
@@ -238,13 +381,19 @@ class _PrayerCard extends StatelessWidget {
   const _PrayerCard({
     required this.title,
     required this.total,
+    required this.canUndo,
     required this.color,
+    required this.onCardTap,
+    required this.onUndo,
     required this.onTap,
   });
 
   final String title;
   final int total;
+  final bool canUndo;
   final Color color;
+  final VoidCallback onCardTap;
+  final VoidCallback onUndo;
   final VoidCallback onTap;
 
   @override
@@ -255,67 +404,81 @@ class _PrayerCard extends StatelessWidget {
             : Colors.white;
 
     return Card.filled(
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.5),
-                    blurRadius: 9,
-                    spreadRadius: 1.5,
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      '$total',
-                      style: TextStyle(
-                        color: badgeTextColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 17,
+      child: InkWell(
+        onTap: onCardTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.5),
+                      blurRadius: 9,
+                      spreadRadius: 1.5,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '$total',
+                        style: TextStyle(
+                          color: badgeTextColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Kılınan Toplam Kaza:',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Kılınan Toplam Kaza:',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            _PressAnimatedPrayerButton(
-              color: color,
-              onPressed: onTap,
-            ),
-          ],
+              IconButton.filledTonal(
+                onPressed: canUndo ? onUndo : null,
+                icon: const Icon(Icons.undo_rounded),
+                tooltip: 'Geri al',
+                style: IconButton.styleFrom(
+                  foregroundColor: color.withValues(alpha: 0.88),
+                  backgroundColor: color.withValues(alpha: 0.13),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _PressAnimatedPrayerButton(
+                color: color,
+                onPressed: onTap,
+              ),
+            ],
+          ),
         ),
       ),
     );

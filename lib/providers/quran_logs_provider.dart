@@ -29,6 +29,24 @@ class QuranLogsNotifier extends AsyncNotifier<List<QuranLogModel>> {
     ref.invalidateSelf();
   }
 
+  Future<int> removeTodayPages(int pages) async {
+    if (pages <= 0) {
+      return 0;
+    }
+
+    final db = ref.read(databaseProvider);
+    final removed = await db.removeTodayQuranPages(pagesToRemove: pages);
+
+    if (removed <= 0) {
+      return 0;
+    }
+
+    ref.invalidate(userProfileProvider);
+    ref.invalidate(streakProvider);
+    ref.invalidateSelf();
+    return removed;
+  }
+
   Future<int> getTodayPages() async {
     final db = ref.read(databaseProvider);
     final todayLogs = await db.getQuranLogs(

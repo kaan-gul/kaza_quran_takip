@@ -53,6 +53,22 @@ class KazaLogsNotifier extends AsyncNotifier<List<KazaLogModel>> {
     return KazaActionResult(levelUp: newLevel > oldLevel, newLevel: newLevel);
   }
 
+  Future<int> undoTodayKaza({required PrayerTime prayerTime}) async {
+    final db = ref.read(databaseProvider);
+    final removed = await db.undoTodayKaza(prayerTime: prayerTime);
+
+    if (removed <= 0) {
+      return 0;
+    }
+
+    ref.invalidate(userProfileProvider);
+    ref.invalidate(statisticsProvider(StatisticsPeriod.weekly));
+    ref.invalidate(statisticsProvider(StatisticsPeriod.monthly));
+    ref.invalidate(streakProvider);
+    ref.invalidateSelf();
+    return removed;
+  }
+
   Future<List<Map<String, Object?>>> getWeeklySummary({int days = 7}) async {
     final db = ref.read(databaseProvider);
     return db.getWeeklyKazaSummary(days: days);
@@ -62,4 +78,11 @@ class KazaLogsNotifier extends AsyncNotifier<List<KazaLogModel>> {
 final kazaLogsProvider =
     AsyncNotifierProvider<KazaLogsNotifier, List<KazaLogModel>>(
   KazaLogsNotifier.new,
+);
+
+final prayerHistoryProvider = FutureProvider.family<List<KazaLogModel>, String>(
+  (ref, vakit) async {
+    final db = ref.watch(databaseProvider);
+    return db.getLogsByPrayerTime(vakit);
+  },
 );
