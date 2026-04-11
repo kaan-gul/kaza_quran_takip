@@ -18,14 +18,12 @@ class KazaLogsNotifier extends AsyncNotifier<List<KazaLogModel>> {
   @override
   Future<List<KazaLogModel>> build() async {
     final db = ref.watch(databaseProvider);
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(days: 6));
-
-    return db.getKazaLogs(start: start, end: now);
+    return db.getKazaLogs();
   }
 
   Future<KazaActionResult> addKaza({
     required PrayerTime prayerTime,
+    required DateTime date,
     int count = 1,
   }) async {
     final db = ref.read(databaseProvider);
@@ -33,7 +31,7 @@ class KazaLogsNotifier extends AsyncNotifier<List<KazaLogModel>> {
 
     await db.insertKazaLog(
       KazaLogModel(
-        date: DateTime.now(),
+        date: date,
         prayerTime: prayerTime,
         count: count,
       ),
@@ -54,9 +52,12 @@ class KazaLogsNotifier extends AsyncNotifier<List<KazaLogModel>> {
     return KazaActionResult(levelUp: newLevel > oldLevel, newLevel: newLevel);
   }
 
-  Future<int> undoTodayKaza({required PrayerTime prayerTime}) async {
+  Future<int> undoTodayKaza({
+    required PrayerTime prayerTime,
+    required DateTime date,
+  }) async {
     final db = ref.read(databaseProvider);
-    final removed = await db.undoTodayKaza(prayerTime: prayerTime);
+    final removed = await db.undoTodayKaza(prayerTime: prayerTime, date: date);
 
     if (removed <= 0) {
       return 0;

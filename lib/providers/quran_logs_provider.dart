@@ -9,19 +9,17 @@ class QuranLogsNotifier extends AsyncNotifier<List<QuranLogModel>> {
   @override
   Future<List<QuranLogModel>> build() async {
     final db = ref.watch(databaseProvider);
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(days: 29));
-    return db.getQuranLogs(start: start, end: now);
+    return db.getQuranLogs();
   }
 
-  Future<void> addTodayPages(int pages) async {
+  Future<void> addTodayPages(int pages, {required DateTime date}) async {
     if (pages <= 0) {
       return;
     }
 
     final db = ref.read(databaseProvider);
     await db.insertOrMergeTodayQuranLog(
-      QuranLogModel(date: DateTime.now(), pages: pages),
+      QuranLogModel(date: date, pages: pages),
     );
 
     ref.invalidate(userProfileProvider);
@@ -29,13 +27,16 @@ class QuranLogsNotifier extends AsyncNotifier<List<QuranLogModel>> {
     ref.invalidateSelf();
   }
 
-  Future<int> removeTodayPages(int pages) async {
+  Future<int> removeTodayPages(int pages, {required DateTime date}) async {
     if (pages <= 0) {
       return 0;
     }
 
     final db = ref.read(databaseProvider);
-    final removed = await db.removeTodayQuranPages(pagesToRemove: pages);
+    final removed = await db.removeTodayQuranPages(
+      pagesToRemove: pages,
+      date: date,
+    );
 
     if (removed <= 0) {
       return 0;
@@ -47,11 +48,11 @@ class QuranLogsNotifier extends AsyncNotifier<List<QuranLogModel>> {
     return removed;
   }
 
-  Future<int> getTodayPages() async {
+  Future<int> getTodayPages({DateTime? date}) async {
     final db = ref.read(databaseProvider);
     final todayLogs = await db.getQuranLogs(
-      start: DateTime.now(),
-      end: DateTime.now(),
+      start: date ?? DateTime.now(),
+      end: date ?? DateTime.now(),
     );
 
     return todayLogs.fold<int>(0, (sum, item) => sum + item.pages);

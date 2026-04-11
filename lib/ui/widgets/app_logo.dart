@@ -11,7 +11,6 @@ class AppLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final circleSize = size;
-    const logoColor = Color(0xFF009688);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -19,34 +18,24 @@ class AppLogo extends StatelessWidget {
         Container(
           width: circleSize,
           height: circleSize,
-          decoration: const BoxDecoration(
+          padding: EdgeInsets.all(circleSize * 0.06),
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: logoColor,
+            color: Theme.of(context).colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: logoColor,
-                blurRadius: 20,
-                spreadRadius: 2,
-                offset: Offset(0, 8),
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24,
+                spreadRadius: 1,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.mosque_rounded,
-                color: Colors.white,
-                size: circleSize * 0.45,
-              ),
-              SizedBox(width: circleSize * 0.1),
-              Icon(
-                Icons.menu_book_rounded,
-                color: Colors.white,
-                size: circleSize * 0.45,
-              ),
-            ],
+          child: ClipOval(
+            child: Image.asset(
+              'assets/logo.png',
+              fit: BoxFit.cover,
+            ),
           ),
         ),
         SizedBox(height: circleSize * 0.25),

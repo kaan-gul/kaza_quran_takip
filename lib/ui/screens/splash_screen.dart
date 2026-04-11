@@ -21,8 +21,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _navigateAfterSplash() async {
-    await Future.delayed(const Duration(seconds: 2));
-
     if (!mounted) {
       return;
     }

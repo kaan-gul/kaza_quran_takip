@@ -8,22 +8,35 @@ class StreakDayData {
     required this.date,
     required this.kazaCounts,
     required this.quranPages,
-  });
+    Map<String, int>? dhikrCounts,
+  }) : dhikrCounts = dhikrCounts ?? const <String, int>{};
 
   final DateTime date;
   final Map<PrayerTime, int> kazaCounts;
   final int quranPages;
+  final Map<String, int> dhikrCounts;
 
   bool get hasKaza => kazaCounts.values.any((value) => value > 0);
   bool get hasQuran => quranPages > 0;
+  bool get hasDhikr => dhikrCounts.values.any((value) => value > 0);
 
   int get totalKazaCount {
     return kazaCounts.values.fold<int>(0, (sum, value) => sum + value);
   }
 
+  int get totalDhikrCount {
+    return dhikrCounts.values.fold<int>(0, (sum, value) => sum + value);
+  }
+
   Map<PrayerTime, int> get nonZeroKazaDetails {
     return Map<PrayerTime, int>.fromEntries(
       kazaCounts.entries.where((entry) => entry.value > 0),
+    );
+  }
+
+  Map<String, int> get nonZeroDhikrDetails {
+    return Map<String, int>.fromEntries(
+      dhikrCounts.entries.where((entry) => entry.value > 0),
     );
   }
 }
@@ -49,6 +62,14 @@ class StreakData {
         days.map((item) => item.hasQuran).toList(growable: false),
       );
 
+  int get dhikrCurrentStreak => _computeCurrentStreakAllowTodayGap(
+        days.map((item) => item.hasDhikr).toList(growable: false),
+      );
+
+  int get dhikrLongestStreak => _computeLongestStreak(
+        days.map((item) => item.hasDhikr).toList(growable: false),
+      );
+
   int get totalKazaInRange {
     var sum = 0;
     for (final day in days) {
@@ -61,6 +82,10 @@ class StreakData {
 
   int get totalQuranPagesInRange {
     return days.fold<int>(0, (sum, day) => sum + day.quranPages);
+  }
+
+  int get totalDhikrInRange {
+    return days.fold<int>(0, (sum, day) => sum + day.totalDhikrCount);
   }
 
   static int _computeCurrentStreakAllowTodayGap(List<bool> values) {
@@ -111,6 +136,7 @@ final streakProvider = FutureProvider<StreakData>((ref) async {
 
   final kazaRows = await db.getDailyKazaStrips(start: start, end: end);
   final quranRows = await db.getDailyQuranPages(start: start, end: end);
+  final dhikrRows = await db.getDailyDhikrSummary(start: start, end: end);
 
   final kazaMap = <String, Map<PrayerTime, int>>{};
   for (final row in kazaRows) {
@@ -133,6 +159,18 @@ final streakProvider = FutureProvider<StreakData>((ref) async {
     quranMap[date] = (row['total_pages'] as num?)?.toInt() ?? 0;
   }
 
+  final dhikrMap = <String, Map<String, int>>{};
+  for (final row in dhikrRows) {
+    final date = row['date'] as String;
+    final dhikrName = row['dhikr_name'] as String;
+    final count = (row['total_count'] as num?)?.toInt() ?? 0;
+
+    final current =
+        Map<String, int>.from(dhikrMap[date] ?? const <String, int>{});
+    current[dhikrName] = count;
+    dhikrMap[date] = current;
+  }
+
   final days = <StreakDayData>[];
   for (var i = 0; i < 60; i++) {
     final current = DateTime(start.year, start.month, start.day + i);
@@ -143,6 +181,9 @@ final streakProvider = FutureProvider<StreakData>((ref) async {
         date: current,
         kazaCounts: kazaMap[key] ?? <PrayerTime, int>{},
         quranPages: quranMap[key] ?? 0,
+        dhikrCounts: Map<String, int>.from(
+          dhikrMap[key] ?? const <String, int>{},
+        ),
       ),
     );
   }

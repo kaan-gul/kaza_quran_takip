@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../providers/kaza_logs_provider.dart';
 import '../../providers/quran_logs_provider.dart';
+import '../../providers/selected_date_provider.dart';
 import '../../providers/user_profile_provider.dart';
+import '../../src/features/dhikr/data/models/dhikr_type_model.dart';
+import '../../src/features/dhikr/presentation/providers/dhikr_logs_provider.dart';
+import '../../src/features/dhikr/presentation/providers/dhikr_types_provider.dart';
 import '../../src/features/kaza/domain/entities/prayer_time.dart';
 import '../theme/app_colors.dart';
 import 'prayer_history_screen.dart';
@@ -17,11 +22,63 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final _quranPagesController = TextEditingController();
+  final _dateFormat = DateFormat('d MMMM y', 'tr_TR');
 
-  String _todayKey() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    return today.toIso8601String().split('T').first;
+  DateTime _dateOnly(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return _dateOnly(a) == _dateOnly(b);
+  }
+
+  String _selectedDateLabel(DateTime date) {
+    final today = _dateOnly(DateTime.now());
+    final selected = _dateOnly(date);
+
+    if (_isSameDay(selected, today)) {
+      return 'Bugün';
+    }
+
+    if (_isSameDay(selected, today.subtract(const Duration(days: 1)))) {
+      return 'Dün';
+    }
+
+    return _dateFormat.format(selected);
+  }
+
+  String _snackbarDateLabel(DateTime date) {
+    final today = _dateOnly(DateTime.now());
+    final selected = _dateOnly(date);
+
+    if (_isSameDay(selected, today)) {
+      return 'bugün';
+    }
+
+    if (_isSameDay(selected, today.subtract(const Duration(days: 1)))) {
+      return 'dün';
+    }
+
+    return _dateFormat.format(selected);
+  }
+
+  void _setSelectedDate(DateTime date) {
+    ref.read(selectedDateProvider.notifier).state = _dateOnly(date);
+  }
+
+  String _quranHeading(DateTime selectedDate) {
+    final today = _dateOnly(DateTime.now());
+    final selected = _dateOnly(selectedDate);
+
+    if (_isSameDay(selected, today)) {
+      return "Bugün kaç sayfa Kur'an okudun?";
+    }
+
+    if (_isSameDay(selected, today.subtract(const Duration(days: 1)))) {
+      return "Dün kaç sayfa Kur'an okudun?";
+    }
+
+    return '${_dateFormat.format(selected)} tarihinde kaç sayfa okudun?';
   }
 
   @override
@@ -42,17 +99,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Future<void> _onAddKaza(PrayerTime prayerTime) async {
+    final selectedDate = ref.read(selectedDateProvider);
     final result = await ref
         .read(kazaLogsProvider.notifier)
-        .addKaza(prayerTime: prayerTime, count: 1);
+        .addKaza(prayerTime: prayerTime, count: 1, date: selectedDate);
 
     if (!mounted) {
       return;
     }
 
+    final prayerLabel = _prayerLabel(prayerTime);
+    final dateLabel = _snackbarDateLabel(selectedDate);
+    final baseMessage = _isSameDay(selectedDate, DateTime.now())
+        ? '1 $prayerLabel kazası eklendi'
+        : '1 $prayerLabel kazası geçmişe ($dateLabel) eklendi';
     final message = result.levelUp
-        ? 'Tebrikler! Seviye ${result.newLevel} oldun.'
-        : 'Harika, 1 adım daha yaklaştın!';
+        ? '$baseMessage. Seviye ${result.newLevel} oldun.'
+        : baseMessage;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -65,6 +128,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Future<void> _onAddQuranPages() async {
     final rawInput = _quranPagesController.text.trim();
     final pages = rawInput.isEmpty ? 1 : int.tryParse(rawInput);
+    final selectedDate = ref.read(selectedDateProvider);
 
     if (pages == null || pages <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -73,13 +137,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       return;
     }
 
-    await ref.read(quranLogsProvider.notifier).addTodayPages(pages);
+    await ref
+        .read(quranLogsProvider.notifier)
+        .addTodayPages(pages, date: selectedDate);
     _quranPagesController.clear();
 
     if (mounted) {
+      final dateLabel = _snackbarDateLabel(selectedDate);
+      final message = _isSameDay(selectedDate, DateTime.now())
+          ? '$pages sayfa eklendi 📖'
+          : '$pages sayfa $dateLabel tarihine eklendi 📖';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$pages sayfa eklendi 📖'),
+          content: Text(message),
           duration: const Duration(milliseconds: 1000),
         ),
       );
@@ -87,28 +157,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Future<void> _onUndoKaza(PrayerTime prayerTime) async {
+    final selectedDate = ref.read(selectedDateProvider);
     final removed = await ref
         .read(kazaLogsProvider.notifier)
-        .undoTodayKaza(prayerTime: prayerTime);
+        .undoTodayKaza(prayerTime: prayerTime, date: selectedDate);
 
     if (!mounted) {
       return;
     }
 
     if (removed <= 0) {
+      final dateLabel = _selectedDateLabel(selectedDate);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bugün geri alınacak kaza yok.'),
-          duration: Duration(milliseconds: 1000),
+        SnackBar(
+          content: Text('$dateLabel için geri alınacak kaza yok.'),
+          duration: const Duration(milliseconds: 1000),
         ),
       );
       return;
     }
 
+    final dateLabel = _snackbarDateLabel(selectedDate);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content:
-            Text('$removed ${_prayerLabel(prayerTime)} kazası geri alındı ↩️'),
+        content: Text(
+          _isSameDay(selectedDate, DateTime.now())
+              ? '$removed ${_prayerLabel(prayerTime)} kazası geri alındı ↩️'
+              : '$removed ${_prayerLabel(prayerTime)} kazası $dateLabel tarihinden geri alındı ↩️',
+        ),
         duration: const Duration(milliseconds: 1000),
       ),
     );
@@ -117,6 +193,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Future<void> _onRemoveQuranPages() async {
     final rawInput = _quranPagesController.text.trim();
     final pages = rawInput.isEmpty ? 1 : int.tryParse(rawInput);
+    final selectedDate = ref.read(selectedDateProvider);
 
     if (pages == null || pages <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -128,8 +205,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       return;
     }
 
-    final removed =
-        await ref.read(quranLogsProvider.notifier).removeTodayPages(pages);
+    final removed = await ref
+        .read(quranLogsProvider.notifier)
+        .removeTodayPages(pages, date: selectedDate);
     _quranPagesController.clear();
 
     if (!mounted) {
@@ -137,18 +215,65 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     if (removed <= 0) {
+      final dateLabel = _selectedDateLabel(selectedDate);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bugün çıkarılacak sayfa yok.'),
-          duration: Duration(milliseconds: 1000),
+        SnackBar(
+          content: Text('$dateLabel için çıkarılacak sayfa yok.'),
+          duration: const Duration(milliseconds: 1000),
         ),
       );
       return;
     }
 
+    final dateLabel = _snackbarDateLabel(selectedDate);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$removed sayfa çıkarıldı ↩️'),
+        content: Text(
+          _isSameDay(selectedDate, DateTime.now())
+              ? '$removed sayfa çıkarıldı ↩️'
+              : '$removed sayfa $dateLabel tarihinden çıkarıldı ↩️',
+        ),
+        duration: const Duration(milliseconds: 1000),
+      ),
+    );
+  }
+
+  Future<void> _showAddDhikrDialog() async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _AddDhikrDialog(),
+    );
+
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Zikir kaydedildi.')),
+      );
+    }
+  }
+
+  Future<void> _onAddDhikrCount(DhikrTypeModel dhikr, int count) async {
+    final selectedDate = ref.read(selectedDateProvider);
+    final result = await ref.read(dhikrTypesProvider.notifier).addDhikrCount(
+          dhikr: dhikr,
+          count: count,
+          date: selectedDate,
+        );
+
+    if (!mounted) {
+      return;
+    }
+
+    final dateLabel = _snackbarDateLabel(selectedDate);
+    final baseMessage = _isSameDay(selectedDate, DateTime.now())
+        ? '$count ${dhikr.name} zikri eklendi'
+        : '$count ${dhikr.name} zikri $dateLabel tarihine eklendi';
+    final bonusMessage = result.bonusAwarded
+        ? ' Hedefe ulaşıldı, +20 bonus puan kazanıldı.'
+        : '';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$baseMessage$bonusMessage'),
         duration: const Duration(milliseconds: 1000),
       ),
     );
@@ -173,6 +298,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final profileAsync = ref.watch(userProfileProvider);
     final kazaLogsAsync = ref.watch(kazaLogsProvider);
     final quranLogsAsync = ref.watch(quranLogsProvider);
+    final dhikrTypesAsync = ref.watch(dhikrTypesProvider);
+    final dhikrLogsAsync = ref.watch(dhikrLogsProvider);
+    final selectedDate = ref.watch(selectedDateProvider);
+    final today = _dateOnly(DateTime.now());
+    final selectedDay = _dateOnly(selectedDate);
+    final canGoForward = !_isSameDay(selectedDay, today);
 
     return profileAsync.when(
       data: (data) {
@@ -183,40 +314,76 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         }
 
         final profile = data.profile;
-        final today = _todayKey();
+        final selectedDateLabel = _selectedDateLabel(selectedDate);
 
-        final todayKazaByPrayer = <PrayerTime, int>{
+        final selectedKazaByPrayer = <PrayerTime, int>{
           for (final prayer in PrayerTime.values) prayer: 0,
         };
 
         final kazaLogs = kazaLogsAsync.valueOrNull ?? const [];
         for (final log in kazaLogs) {
-          final date = DateTime(log.date.year, log.date.month, log.date.day)
-              .toIso8601String()
-              .split('T')
-              .first;
-          if (date != today) {
+          if (!_isSameDay(log.date, selectedDate)) {
             continue;
           }
-          todayKazaByPrayer[log.prayerTime] =
-              (todayKazaByPrayer[log.prayerTime] ?? 0) + log.count;
+          selectedKazaByPrayer[log.prayerTime] =
+              (selectedKazaByPrayer[log.prayerTime] ?? 0) + log.count;
         }
 
         final quranLogs = quranLogsAsync.valueOrNull ?? const [];
-        final todayQuranPages = quranLogs
-            .where(
-              (log) =>
-                  DateTime(log.date.year, log.date.month, log.date.day)
-                      .toIso8601String()
-                      .split('T')
-                      .first ==
-                  today,
-            )
+        final selectedQuranPages = quranLogs
+            .where((log) => _isSameDay(log.date, selectedDate))
             .fold<int>(0, (sum, log) => sum + log.pages);
+
+        final dhikrTypes =
+            dhikrTypesAsync.valueOrNull ?? const <DhikrTypeModel>[];
+        final dhikrLogs = dhikrLogsAsync.valueOrNull ?? const [];
+        final selectedDhikrCountById = <int, int>{};
+        for (final log in dhikrLogs) {
+          selectedDhikrCountById[log.dhikrId] =
+              (selectedDhikrCountById[log.dhikrId] ?? 0) + log.completedCount;
+        }
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
+            _DateNavigatorBar(
+              label: selectedDateLabel,
+              onPrevious: () => _setSelectedDate(
+                selectedDay.subtract(const Duration(days: 1)),
+              ),
+              onNext: canGoForward
+                  ? () => _setSelectedDate(
+                        selectedDay.add(const Duration(days: 1)),
+                      )
+                  : null,
+              onPickDate: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDay,
+                  firstDate: DateTime(2000),
+                  lastDate: today,
+                  locale: const Locale('tr', 'TR'),
+                  builder: (context, child) {
+                    final theme = Theme.of(context);
+                    return Theme(
+                      data: theme.copyWith(
+                        datePickerTheme: theme.datePickerTheme.copyWith(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                      ),
+                      child: child ?? const SizedBox.shrink(),
+                    );
+                  },
+                );
+
+                if (picked != null) {
+                  _setSelectedDate(picked);
+                }
+              },
+            ),
+            const SizedBox(height: 16),
             _LevelCard(
               level: profile.level,
               points: profile.motivationPoints,
@@ -225,7 +392,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Bugüne Kadar Kılınan Toplam Kaza Sayıları',
+              'Seçili Günün Toplam Kaza Sayıları',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
@@ -239,7 +406,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 child: _PrayerCard(
                   title: prayerName,
                   total: total,
-                  canUndo: (todayKazaByPrayer[time] ?? 0) > 0,
+                  canUndo: (selectedKazaByPrayer[time] ?? 0) > 0,
                   color: prayerColor,
                   onCardTap: () => _openPrayerHistory(
                     prayerName: prayerName,
@@ -260,11 +427,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Bugün kaç sayfa Kuran okudun?',
-                      style: TextStyle(
+                    Text(
+                      _quranHeading(selectedDate),
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Seçili gün toplamı: $selectedQuranPages sayfa',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -283,8 +457,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         const SizedBox(width: 10),
                         IconButton.filledTonal(
-                          onPressed:
-                              todayQuranPages > 0 ? _onRemoveQuranPages : null,
+                          onPressed: selectedQuranPages > 0
+                              ? _onRemoveQuranPages
+                              : null,
                           icon: const Icon(Icons.remove_rounded),
                           tooltip: 'Sayfa çıkar',
                           style: IconButton.styleFrom(
@@ -296,21 +471,331 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         const SizedBox(width: 8),
                         _PressAnimatedQuranAddButton(
-                          onPressed: () {
-                            _onAddQuranPages();
-                          },
-                        ),
+                            onPressed: _onAddQuranPages),
                       ],
                     ),
                   ],
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Günlük Zikirlerim',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _showAddDhikrDialog,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Yeni Zikir Ekle'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (dhikrTypesAsync.isLoading && dhikrTypes.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (dhikrTypes.isEmpty)
+              const _DhikrEmptyState()
+            else
+              ListView.builder(
+                itemCount: dhikrTypes.length,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemBuilder: (context, index) {
+                  final dhikr = dhikrTypes[index];
+                  final currentCount = dhikr.id == null
+                      ? 0
+                      : (selectedDhikrCountById[dhikr.id!] ?? 0);
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _DhikrCard(
+                      name: dhikr.name,
+                      targetCount: dhikr.targetCount,
+                      currentCount: currentCount,
+                      onAddOne: dhikr.id == null
+                          ? null
+                          : () => _onAddDhikrCount(dhikr, 1),
+                      onAddThirtyThree: dhikr.id == null
+                          ? null
+                          : () => _onAddDhikrCount(dhikr, 33),
+                    ),
+                  );
+                },
+              ),
           ],
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(child: Text('Hata: $error')),
+    );
+  }
+}
+
+class _DateNavigatorBar extends StatelessWidget {
+  const _DateNavigatorBar({
+    required this.label,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onPickDate,
+  });
+
+  final String label;
+  final VoidCallback onPrevious;
+  final VoidCallback? onNext;
+  final VoidCallback onPickDate;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card.filled(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: onPrevious,
+              icon: const Icon(Icons.chevron_left_rounded),
+              tooltip: 'Önceki gün',
+            ),
+            Expanded(
+              child: TextButton.icon(
+                onPressed: onPickDate,
+                icon: const Icon(Icons.calendar_month_rounded),
+                label: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: colorScheme.onSurface,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: onNext,
+              icon: const Icon(Icons.chevron_right_rounded),
+              tooltip: 'Sonraki gün',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddDhikrDialog extends ConsumerStatefulWidget {
+  const _AddDhikrDialog();
+
+  @override
+  ConsumerState<_AddDhikrDialog> createState() => _AddDhikrDialogState();
+}
+
+class _AddDhikrDialogState extends ConsumerState<_AddDhikrDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _targetController = TextEditingController(text: '99');
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _targetController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving) {
+      return;
+    }
+
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await ref.read(dhikrTypesProvider.notifier).addDhikrType(
+            name: _nameController.text.trim(),
+            targetCount: int.parse(_targetController.text.trim()),
+          );
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Yeni Zikir Ekle'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Zikir Adı',
+                  hintText: 'La ilahe illallah',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Zikir adını gir';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _targetController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Hedef Sayı',
+                  hintText: '99',
+                ),
+                validator: (value) {
+                  final parsed = int.tryParse(value?.trim() ?? '');
+                  if (parsed == null || parsed <= 0) {
+                    return 'Pozitif bir sayı gir';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Vazgeç'),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Kaydet'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DhikrEmptyState extends StatelessWidget {
+  const _DhikrEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card.outlined(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: const Padding(
+        padding: EdgeInsets.all(18),
+        child: Text(
+          'Henüz zikir eklenmedi. "Yeni Zikir Ekle" ile kendi listenizi oluşturun.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+      ),
+    );
+  }
+}
+
+class _DhikrCard extends StatelessWidget {
+  const _DhikrCard({
+    required this.name,
+    required this.targetCount,
+    required this.currentCount,
+    required this.onAddOne,
+    required this.onAddThirtyThree,
+  });
+
+  final String name;
+  final int targetCount;
+  final int currentCount;
+  final VoidCallback? onAddOne;
+  final VoidCallback? onAddThirtyThree;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = targetCount <= 0
+        ? 0.0
+        : (currentCount / targetCount).clamp(0, 1).toDouble();
+
+    return Card.filled(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              name,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '$currentCount/$targetCount',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                backgroundColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Colors.deepPurple,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: onAddOne,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('+1'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onAddThirtyThree,
+                    icon: const Icon(Icons.exposure_plus_1_rounded),
+                    label: const Text('+33'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

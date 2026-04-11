@@ -1,6 +1,8 @@
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
+import '../../features/dhikr/data/models/dhikr_log_model.dart';
+import '../../features/dhikr/data/models/dhikr_type_model.dart';
 import '../../features/kaza/data/models/kaza_log_model.dart';
 import '../../features/kaza/domain/entities/prayer_time.dart';
 import '../../features/profile/data/models/user_profile_model.dart';
@@ -12,11 +14,13 @@ class AppDatabaseHelper {
   static final AppDatabaseHelper instance = AppDatabaseHelper._internal();
 
   static const String _databaseName = 'kaza_quran_takip.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   static const String userProfileTable = 'user_profile';
   static const String kazaLogsTable = 'kaza_logs';
   static const String quranLogsTable = 'quran_logs';
+  static const String userDhikrsTable = 'user_dhikrs';
+  static const String dhikrLogsTable = 'dhikr_logs';
 
   Database? _database;
 
@@ -36,6 +40,7 @@ class AppDatabaseHelper {
       fullPath,
       version: _databaseVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -43,6 +48,17 @@ class AppDatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    await _createBaseTables(db);
+    await _createDhikrTables(db);
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await _createDhikrTables(db);
+    }
+  }
+
+  Future<void> _createBaseTables(Database db) async {
     await db.execute('''
       CREATE TABLE $userProfileTable (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,6 +108,36 @@ class AppDatabaseHelper {
     );
   }
 
+  Future<void> _createDhikrTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $userDhikrsTable (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        target_count INTEGER NOT NULL,
+        created_at TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $dhikrLogsTable (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        dhikr_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        completed_count INTEGER NOT NULL,
+        created_at TEXT,
+        FOREIGN KEY (dhikr_id) REFERENCES $userDhikrsTable (id) ON DELETE CASCADE,
+        UNIQUE (dhikr_id, date)
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_dhikr_logs_date ON $dhikrLogsTable (date)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_dhikr_logs_type_date ON $dhikrLogsTable (dhikr_id, date)',
+    );
+  }
+
   Future<int> upsertUserProfile(UserProfileModel profile) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
@@ -128,6 +174,32 @@ class AppDatabaseHelper {
     return UserProfileModel.fromMap(maps.first);
   }
 
+  Future<int> insertUserDhikr(DhikrTypeModel dhikr) async {
+    final db = await database;
+    return db.insert(
+      userDhikrsTable,
+      dhikr.copyWith(createdAt: DateTime.now()).toMap(),
+    );
+  }
+
+  Future<int> deleteUserDhikr(int id) async {
+    final db = await database;
+    return db.delete(
+      userDhikrsTable,
+      where: 'id = ?',
+      whereArgs: <Object>[id],
+    );
+  }
+
+  Future<List<DhikrTypeModel>> getUserDhikrs() async {
+    final db = await database;
+    final maps = await db.query(
+      userDhikrsTable,
+      orderBy: 'created_at DESC, id DESC',
+    );
+    return maps.map(DhikrTypeModel.fromMap).toList();
+  }
+
   Future<int> insertKazaLog(KazaLogModel log) async {
     final db = await database;
 
@@ -149,6 +221,7 @@ class AppDatabaseHelper {
 
   Future<int> undoTodayKaza({
     required PrayerTime prayerTime,
+    DateTime? date,
     int decrementBy = 1,
   }) async {
     if (decrementBy <= 0) {
@@ -156,13 +229,13 @@ class AppDatabaseHelper {
     }
 
     final db = await database;
-    final today = _dateOnly(DateTime.now());
+    final targetDate = _dateOnly(date ?? DateTime.now());
 
     return db.transaction<int>((txn) async {
       final rows = await txn.query(
         kazaLogsTable,
         where: 'date = ? AND prayer_time = ?',
-        whereArgs: <Object>[today, prayerTime.name],
+        whereArgs: <Object>[targetDate, prayerTime.name],
         orderBy: 'id DESC',
         limit: 1,
       );
@@ -332,19 +405,123 @@ class AppDatabaseHelper {
     });
   }
 
-  Future<int> removeTodayQuranPages({int pagesToRemove = 1}) async {
+  Future<int> insertOrUpdateDhikrLog({
+    required DhikrLogModel log,
+    required int targetCount,
+  }) async {
+    final db = await database;
+    final day = _dateOnly(log.date);
+
+    return db.transaction<int>((txn) async {
+      final typeRows = await txn.query(
+        userDhikrsTable,
+        where: 'id = ?',
+        whereArgs: <Object>[log.dhikrId],
+        limit: 1,
+      );
+
+      if (typeRows.isEmpty) {
+        return 0;
+      }
+
+      final existing = await txn.query(
+        dhikrLogsTable,
+        where: 'dhikr_id = ? AND date = ?',
+        whereArgs: <Object>[log.dhikrId, day],
+        limit: 1,
+      );
+
+      final incrementBy = log.completedCount;
+      if (incrementBy <= 0) {
+        return 0;
+      }
+
+      var currentCount = 0;
+      int id;
+      if (existing.isEmpty) {
+        id = await txn.insert(
+          dhikrLogsTable,
+          log
+              .copyWith(
+                date: DateTime.parse(day),
+                createdAt: DateTime.now(),
+              )
+              .toMap(),
+        );
+      } else {
+        final row = existing.first;
+        id = (row['id'] as num).toInt();
+        currentCount = (row['completed_count'] as num?)?.toInt() ?? 0;
+        await txn.update(
+          dhikrLogsTable,
+          <String, Object>{
+            'completed_count': currentCount + incrementBy,
+            'created_at': row['created_at'] ?? DateTime.now().toIso8601String(),
+          },
+          where: 'id = ?',
+          whereArgs: <Object>[id],
+        );
+      }
+
+      final nextCount = currentCount + incrementBy;
+      final pointsToAdd = incrementBy +
+          (currentCount < targetCount && nextCount >= targetCount ? 20 : 0);
+
+      await _increaseMotivationPoints(
+        txn: txn,
+        points: pointsToAdd,
+      );
+
+      return id;
+    });
+  }
+
+  Future<List<DhikrLogModel>> getDhikrLogsByDate(DateTime date) async {
+    final db = await database;
+    final maps = await db.query(
+      dhikrLogsTable,
+      where: 'date = ?',
+      whereArgs: <Object>[_dateOnly(date)],
+      orderBy: 'dhikr_id ASC',
+    );
+    return maps.map(DhikrLogModel.fromMap).toList();
+  }
+
+  Future<List<Map<String, Object?>>> getDailyDhikrSummary({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final db = await database;
+
+    return db.rawQuery(
+      '''
+      SELECT l.date, l.dhikr_id, d.name AS dhikr_name, SUM(l.completed_count) AS total_count
+      FROM $dhikrLogsTable l
+      INNER JOIN $userDhikrsTable d ON d.id = l.dhikr_id
+      WHERE l.date BETWEEN ? AND ?
+      GROUP BY l.date, l.dhikr_id, d.name
+      ORDER BY l.date ASC, d.name ASC
+      ''',
+      <Object>[_dateOnly(start), _dateOnly(end)],
+    );
+  }
+
+  Future<int> removeTodayQuranPages({
+    int pagesToRemove = 1,
+    DateTime? date,
+  }) async {
     if (pagesToRemove <= 0) {
       return 0;
     }
 
     final db = await database;
-    final today = _dateOnly(DateTime.now());
+    final targetDate = _dateOnly(date ?? DateTime.now());
 
     return db.transaction<int>((txn) async {
       final rows = await txn.query(
         quranLogsTable,
         where: 'date = ?',
-        whereArgs: <Object>[today],
+        whereArgs: <Object>[targetDate],
         limit: 1,
       );
 
@@ -425,6 +602,35 @@ class AppDatabaseHelper {
     final profile = UserProfileModel.fromMap(profileRows.first);
     final pointsAfter = (profile.motivationPoints - (pages * 70))
         .clamp(0, profile.motivationPoints);
+    final levelAfter = _calculateLevelFromPoints(pointsAfter);
+
+    await txn.update(
+      userProfileTable,
+      <String, Object>{
+        'motivation_points': pointsAfter,
+        'level': levelAfter,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: <Object>[profile.id ?? 1],
+    );
+  }
+
+  Future<void> _increaseMotivationPoints({
+    required Transaction txn,
+    required int points,
+  }) async {
+    if (points <= 0) {
+      return;
+    }
+
+    final profileRows = await txn.query(userProfileTable, limit: 1);
+    if (profileRows.isEmpty) {
+      return;
+    }
+
+    final profile = UserProfileModel.fromMap(profileRows.first);
+    final pointsAfter = profile.motivationPoints + points;
     final levelAfter = _calculateLevelFromPoints(pointsAfter);
 
     await txn.update(

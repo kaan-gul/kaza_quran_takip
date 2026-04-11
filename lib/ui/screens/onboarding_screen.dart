@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/user_profile_provider.dart';
+import 'main_layout.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -64,6 +65,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Başlangıç profili kaydedildi.')),
+        );
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => const MainLayout(),
+          ),
         );
       }
     } catch (_) {

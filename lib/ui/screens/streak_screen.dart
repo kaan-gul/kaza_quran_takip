@@ -13,7 +13,7 @@ class StreakScreen extends ConsumerWidget {
     final streakAsync = ref.watch(streakProvider);
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Seriler'),
@@ -21,6 +21,7 @@ class StreakScreen extends ConsumerWidget {
             tabs: [
               Tab(icon: Icon(Icons.mosque_rounded), text: 'Namaz Serisi'),
               Tab(icon: Icon(Icons.menu_book_rounded), text: 'Kuran Serisi'),
+              Tab(icon: Icon(Icons.fingerprint), text: 'Zikir Serisi'),
             ],
           ),
         ),
@@ -30,6 +31,7 @@ class StreakScreen extends ConsumerWidget {
               children: [
                 _NamazSeriesTab(data: data),
                 _QuranSeriesTab(data: data),
+                _DhikrSeriesTab(data: data),
               ],
             );
           },
@@ -121,6 +123,49 @@ class _QuranSeriesTab extends StatelessWidget {
           _QuranHeatGrid(days: data.days),
           const SizedBox(height: 12),
           const _QuranLegend(),
+        ],
+      ),
+    );
+  }
+}
+
+class _DhikrSeriesTab extends StatelessWidget {
+  const _DhikrSeriesTab({required this.data});
+
+  final StreakData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _MetricsWrap(
+            items: [
+              _MetricItem(
+                label: 'Mevcut Seri',
+                value: '${data.dhikrCurrentStreak} Gün',
+                icon: Icons.local_fire_department_rounded,
+              ),
+              _MetricItem(
+                label: 'En Uzun Seri',
+                value: '${data.dhikrLongestStreak} Gün',
+                icon: Icons.emoji_events_rounded,
+              ),
+              _MetricItem(
+                label: 'Toplam Zikir (60 Gün)',
+                value: '${data.totalDhikrInRange}',
+                icon: Icons.fingerprint,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const _SectionCardTitle(title: 'Son 60 Günlük Zikir Haritası'),
+          const SizedBox(height: 8),
+          _DhikrHeatGrid(days: data.days),
+          const SizedBox(height: 12),
+          const _DhikrLegend(),
         ],
       ),
     );
@@ -259,9 +304,47 @@ class _QuranLegend extends StatelessWidget {
           runSpacing: 10,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            _LegendChip(color: Color(0x664BAF8A), label: '1-5 Sf'),
-            _LegendChip(color: Color(0xB34BAF8A), label: '6-10 Sf'),
-            _LegendChip(color: Color(0xFF4BAF8A), label: '20+ Sf'),
+            _LegendChip(color: Color(0x334BAF8A), label: '1 Sf'),
+            _LegendChip(color: Color(0x414BAF8A), label: '2 Sf'),
+            _LegendChip(color: Color(0x554BAF8A), label: '3 Sf'),
+            _LegendChip(color: Color(0x6A4BAF8A), label: '4 Sf'),
+            _LegendChip(color: Color(0x804BAF8A), label: '5 Sf'),
+            _LegendChip(color: Color(0x964BAF8A), label: '6 Sf'),
+            _LegendChip(color: Color(0xAC4BAF8A), label: '7 Sf'),
+            _LegendChip(color: Color(0xC34BAF8A), label: '8 Sf'),
+            _LegendChip(color: Color(0xD94BAF8A), label: '9/10 Sf'),
+            _LegendChip(color: Color(0xFF4BAF8A), label: '10+ Sf'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DhikrLegend extends StatelessWidget {
+  const _DhikrLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card.outlined(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _LegendChip(color: Color(0x332E1065), label: '1-33'),
+            _LegendChip(color: Color(0x552E1065), label: '34-66'),
+            _LegendChip(color: Color(0x732E1065), label: '67-99'),
+            _LegendChip(color: Color(0x992E1065), label: '100-150'),
+            _LegendChip(color: Color(0xC02E1065), label: '151-300'),
+            _LegendChip(color: Color(0xE02E1065), label: '301-500'),
+            _LegendChip(color: Color(0xFF2E1065), label: '500+'),
           ],
         ),
       ),
@@ -381,16 +464,145 @@ class _QuranHeatGrid extends StatelessWidget {
     if (pages <= 0) {
       return const Color(0xFFE5E7EB);
     }
-    if (pages <= 5) {
-      return AppColors.quranEmerald.withValues(alpha: 0.40);
+    if (pages == 1) {
+      return AppColors.quranEmerald.withValues(alpha: 0.20);
+    }
+    if (pages == 2) {
+      return AppColors.quranEmerald.withValues(alpha: 0.28);
+    }
+    if (pages == 3) {
+      return AppColors.quranEmerald.withValues(alpha: 0.36);
+    }
+    if (pages == 4) {
+      return AppColors.quranEmerald.withValues(alpha: 0.45);
+    }
+    if (pages == 5) {
+      return AppColors.quranEmerald.withValues(alpha: 0.55);
+    }
+    if (pages == 6) {
+      return AppColors.quranEmerald.withValues(alpha: 0.65);
+    }
+    if (pages == 7) {
+      return AppColors.quranEmerald.withValues(alpha: 0.75);
+    }
+    if (pages == 8) {
+      return AppColors.quranEmerald.withValues(alpha: 0.84);
     }
     if (pages <= 10) {
-      return AppColors.quranEmerald.withValues(alpha: 0.70);
-    }
-    if (pages < 20) {
-      return AppColors.quranEmerald.withValues(alpha: 0.85);
+      return AppColors.quranEmerald.withValues(alpha: 0.93);
     }
     return AppColors.quranEmerald.withValues(alpha: 1.0);
+  }
+}
+
+class _DhikrHeatGrid extends StatelessWidget {
+  const _DhikrHeatGrid({required this.days});
+
+  final List<StreakDayData> days;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAnyData = days.any((day) => day.hasDhikr);
+    if (!hasAnyData) {
+      return const _GridCard(
+        child: _EmptyStreakState(
+            icon: Icons.fingerprint,
+            text: 'Henüz zikir kaydı yok. İlk zikirle serini başlat!'),
+      );
+    }
+
+    return _GridCard(
+      child: Wrap(
+        spacing: 7,
+        runSpacing: 7,
+        children: days.map((day) {
+          final color = _dhikrColor(day.totalDhikrCount);
+          return Tooltip(
+            message: _tooltip(day),
+            child: GestureDetector(
+              onTap: () => _showDayDetailDialog(context, day),
+              child: Container(
+                width: 17,
+                height: 17,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  String _tooltip(StreakDayData day) {
+    final date =
+        '${day.date.day.toString().padLeft(2, '0')}.${day.date.month.toString().padLeft(2, '0')}.${day.date.year}';
+    return '$date - ${day.totalDhikrCount} zikir';
+  }
+
+  Color _dhikrColor(int total) {
+    if (total <= 0) {
+      return const Color(0xFFE5E7EB);
+    }
+    if (total <= 33) {
+      return Colors.deepPurple.withValues(alpha: 0.20);
+    }
+    if (total <= 66) {
+      return Colors.deepPurple.withValues(alpha: 0.33);
+    }
+    if (total <= 99) {
+      return Colors.deepPurple.withValues(alpha: 0.45);
+    }
+    if (total <= 150) {
+      return Colors.deepPurple.withValues(alpha: 0.60);
+    }
+    if (total <= 300) {
+      return Colors.deepPurple.withValues(alpha: 0.75);
+    }
+    if (total <= 500) {
+      return Colors.deepPurple.withValues(alpha: 0.88);
+    }
+    return Colors.deepPurple.withValues(alpha: 1.0);
+  }
+
+  Future<void> _showDayDetailDialog(
+    BuildContext context,
+    StreakDayData day,
+  ) async {
+    final date =
+        '${day.date.day.toString().padLeft(2, '0')}.${day.date.month.toString().padLeft(2, '0')}.${day.date.year}';
+    final details = day.nonZeroDhikrDetails;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(date),
+          content: details.isEmpty
+              ? const Text('Kayıt yok')
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: details.entries
+                      .map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text('${entry.key}: ${entry.value}'),
+                        ),
+                      )
+                      .toList(),
+                ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Kapat'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
